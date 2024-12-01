@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "natqe.reload",
+    "eamodio.gitlens",
+    "irongeek.vscode-env",
+    "edonet.vscode-command-runner",
+    "ms-azuretools.vscode-docker",
+    "vivaxy.vscode-conventional-commits",
+    "seunlanlege.action-buttons",
+    "vunguyentuan.vscode-postcss", // Ref: https://mantine.dev/getting-started/
+    "vunguyentuan.vscode-css-variables" // Ref: https://mantine.dev/getting-started/
+  ]
+}

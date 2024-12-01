@@ -1,0 +1,8 @@
+node_modules
+dist
+electron-package
+*.log
+.DS_Store
+.cache
+.eslintcache
+storybook-static

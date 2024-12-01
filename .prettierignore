@@ -1,0 +1,10 @@
+*.log
+.DS_Store
+node_modules
+.cache
+*.md
+*.ico
+*.png
+dist
+.eslintcache
+storybook-static
