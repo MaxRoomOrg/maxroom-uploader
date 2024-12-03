@@ -1,9 +1,10 @@
 import { Logger } from "./logger";
-import { Platform, uploadToFacebook, uploadToX, uploadToYoutube, uploadToTiktok } from "./utils";
+import { PlatformHandlers } from "./utils";
 import { IPCEvents } from "../ipc-api";
-import { app, BrowserWindow, ipcMain, screen } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import { chromium } from "playwright-chromium";
 import { join, resolve } from "path";
+import type { Platform } from "./utils";
 
 // Ref: https://www.electronjs.org/docs/latest/tutorial/launch-app-from-url-in-another-app
 function setupProtocol(): void {
@@ -81,7 +82,7 @@ async function setUpElectronApp(): Promise<void> {
     process.kill(process.pid, "SIGUSR2");
   });
 
-  ipcMain.handle(IPCEvents.Upload, async (_event, uploadTo: string) => {
+  ipcMain.handle(IPCEvents.Upload, async (_event, platforms: Platform[]) => {
     // Ref: https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context
     const userDataDir = join(app.getPath("userData"), "playwright"); // Directory where session data will be stored
     const context = await chromium.launchPersistentContext(userDataDir, {
@@ -91,19 +92,6 @@ async function setUpElectronApp(): Promise<void> {
       args: ["--disable-blink-features=AutomationControlled"], // Ref: https://stackoverflow.com/a/78790595 and https://github.com/microsoft/playwright/issues/24374#issuecomment-1648279814
     });
 
-    const {
-      workAreaSize: { width, height },
-    } = screen.getPrimaryDisplay(); // Ref: https://www.electronjs.org/docs/latest/api/screen
-    const page = await context.newPage();
-    await page.setViewportSize({ width, height }); // Use width and height for viewport size
-
-    // The blank page should be closed only after the new page is created; closing it beforehand will cause the browser to shut down since it automatically closes when no tabs remain open.
-    // When the browser opens (with "channel" set as "chrome") with PersistentContext then by default a blank page with URL: about:blank is opened, hence closing it to avoiding this behaviour
-    const pages = context.pages();
-    if (pages.length > 1 && pages[0].url() === "about:blank") {
-      await pages[0].close();
-    }
-
     // Determine the video path | // when we import video we get hashed filename (e.g: cf14a8de162eb0c7a716.mp4) which cannot be used, because to upload the video to youtube or any platform we need exact path of file.
     const video = join(
       app.isPackaged === true ? process.resourcesPath : app.getAppPath(),
@@ -112,17 +100,18 @@ async function setUpElectronApp(): Promise<void> {
       "video.mp4",
     );
 
-    if (uploadTo === Platform.Youtube) {
-      await uploadToYoutube(page, video);
-    } else if (uploadTo === Platform.X) {
-      await uploadToX(page, [video]);
-    } else if (uploadTo === Platform.TikTok) {
-      await uploadToTiktok(page, video);
-    } else if (uploadTo === Platform.Facebook) {
-      await uploadToFacebook(page, video);
-    }
+    const uploadPromises: Promise<void>[] = platforms.map((ele) => {
+      return PlatformHandlers[ele](context, [video]);
+    });
 
-    await context.close({ reason: "Upload completed." });
+    try {
+      // Run all uploads in parallel
+      await Promise.all(uploadPromises);
+      await context.close({ reason: "Upload completed." });
+    } catch (error) {
+      console.log(error);
+      await context.close({ reason: "Error while uploading." });
+    }
   });
 
   window.on("closed", () => {

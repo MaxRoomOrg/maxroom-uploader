@@ -1,48 +1,42 @@
 import { Platform } from "../../../main/utils";
-import { Button, SimpleGrid } from "@mantine/core";
+import { Button, MultiSelect, Stack } from "@mantine/core";
+import { useState } from "react";
+
+const handleUpload = (platforms: Platform[]) => {
+  window.electronAPI
+    ?.upload(platforms)
+    .then(() => {
+      console.log("Videos uploaded");
+    })
+    .catch((error: unknown) => {
+      console.log(error);
+    });
+};
 
 export function Upload() {
-  const handleUpload = (platform: Platform) => {
-    window.electronAPI
-      ?.upload(platform)
-      .then(() => {
-        console.log(`video uploaded to ${platform}`);
-      })
-      .catch((error: unknown) => {
-        console.log(error);
-      });
-  };
+  const [platforms, setPlatforms] = useState<Platform[]>([]);
 
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="sm" p="sm" w="100%">
+    <Stack>
+      <MultiSelect
+        data={Object.entries(Platform).map(([label, value]) => {
+          return {
+            value,
+            label,
+          };
+        })}
+        value={platforms}
+        onChange={(values) => {
+          setPlatforms(values as Platform[]);
+        }}
+      />
       <Button
         onClick={() => {
-          handleUpload(Platform.Youtube);
+          handleUpload(platforms);
         }}
       >
-        Youtube
+        Publish
       </Button>
-      <Button
-        onClick={() => {
-          handleUpload(Platform.X);
-        }}
-      >
-        X
-      </Button>
-      <Button
-        onClick={() => {
-          handleUpload(Platform.TikTok);
-        }}
-      >
-        TikTok
-      </Button>
-      <Button
-        onClick={() => {
-          handleUpload(Platform.Facebook);
-        }}
-      >
-        Facebook
-      </Button>
-    </SimpleGrid>
+    </Stack>
   );
 }
