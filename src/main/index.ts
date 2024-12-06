@@ -1,10 +1,13 @@
 import { Logger } from "./logger";
 import { PlatformHandlers } from "./utils";
 import { IPCEvents } from "../ipc-api";
-import { app, BrowserWindow, ipcMain } from "electron";
+import { MediaType } from "../utils";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { chromium } from "playwright-chromium";
 import { join, resolve } from "path";
-import type { Platform } from "./utils";
+import type { VideoDetails } from "../schemas";
+import type { Platform } from "../utils";
+import type { FileFilter, OpenDialogReturnValue } from "electron";
 
 // Ref: https://www.electronjs.org/docs/latest/tutorial/launch-app-from-url-in-another-app
 function setupProtocol(): void {
@@ -82,7 +85,7 @@ async function setUpElectronApp(): Promise<void> {
     process.kill(process.pid, "SIGUSR2");
   });
 
-  ipcMain.handle(IPCEvents.Upload, async (_event, platforms: Platform[]) => {
+  ipcMain.handle(IPCEvents.Upload, async (_event, platforms: Platform[], video: VideoDetails) => {
     // Ref: https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context
     const userDataDir = join(app.getPath("userData"), "playwright"); // Directory where session data will be stored
     const context = await chromium.launchPersistentContext(userDataDir, {
@@ -90,15 +93,9 @@ async function setUpElectronApp(): Promise<void> {
       channel: "chrome", // Uses the Chrome browser installed on the user's system instead of Playwright's installed Chromium.
       // Disables browser automation detection features, preventing websites from identifying Playwright-controlled browsers
       args: ["--disable-blink-features=AutomationControlled"], // Ref: https://stackoverflow.com/a/78790595 and https://github.com/microsoft/playwright/issues/24374#issuecomment-1648279814
+      // This makes the browser opens in full screen mode, taking the dimension of the screen itself and the pages opened in the browser takes full viewport (of browser).
+      viewport: null, // Ref: https://stackoverflow.com/a/75978207
     });
-
-    // Determine the video path | // when we import video we get hashed filename (e.g: cf14a8de162eb0c7a716.mp4) which cannot be used, because to upload the video to youtube or any platform we need exact path of file.
-    const video = join(
-      app.isPackaged === true ? process.resourcesPath : app.getAppPath(),
-      "src",
-      "assets",
-      "video.mp4",
-    );
 
     const uploadPromises: Promise<void>[] = platforms.map((ele) => {
       return PlatformHandlers[ele](context, [video]);
@@ -114,12 +111,31 @@ async function setUpElectronApp(): Promise<void> {
     }
   });
 
+  ipcMain.handle(IPCEvents.SelectMedia, async (_event, mediaType: MediaType): Promise<OpenDialogReturnValue> => {
+    // Ref: https://www.electronjs.org/docs/latest/api/dialog#dialogshowopendialogwindow-options
+    let filters: FileFilter[];
+    if (mediaType === MediaType.Image) {
+      filters = [{ name: "Images", extensions: ["jpg", "png", "gif"] }];
+    } else {
+      filters = [{ name: "Movies", extensions: ["mkv", "avi", "mp4", "webm"] }];
+    }
+
+    // Ref: https://www.electronjs.org/docs/latest/api/dialog#dialogshowopendialogsyncwindow-options
+    const output = await dialog.showOpenDialog({
+      filters,
+      properties: ["openFile"], // "openFile" allow us to select only files
+    });
+
+    return output;
+  });
+
   window.on("closed", () => {
     // Remove event listeners
     window.removeAllListeners();
     // Remove listners and handlers
     ipcMain.removeAllListeners(); // To handle errors like: Error: Attempted to register a second handler for 'get-folder-path' in macOS
     ipcMain.removeHandler(IPCEvents.Upload);
+    ipcMain.removeHandler(IPCEvents.SelectMedia);
   });
 }
 

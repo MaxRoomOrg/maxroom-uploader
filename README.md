@@ -1,6 +1,6 @@
-## Electron | ReactJS | Starter App
+## MaxRoom Uploader
 
-A Template Repository for creating ReactJS based Electron App.
+An Electron bot that uploads videos to X, FB, YT and TikTok
 
 It has support for:
 

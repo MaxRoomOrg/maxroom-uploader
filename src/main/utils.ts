@@ -1,3 +1,5 @@
+import { Platform } from "../utils";
+import type { VideoDetails } from "../schemas";
 import type { BrowserContext } from "playwright-chromium";
 
 /**
@@ -27,14 +29,14 @@ function sleep(ms: number) {
   });
 }
 
-async function uploadToYoutube(context: BrowserContext, videoPaths: string[], delayBetweenPosts = 5000) {
+async function uploadToYoutube(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
 
   try {
     // Go to youtube.com
     await page.goto("https://youtube.com/");
     await closeBlankPage(context);
-    for (const videoPath of videoPaths) {
+    for (const video of videos) {
       const createButton = page.getByLabel("Create", { exact: true }); // We use { exact: true } to ensure that the label "Create" is matched exactly, without allowing partial matches.
       await createButton.click();
 
@@ -43,12 +45,43 @@ async function uploadToYoutube(context: BrowserContext, videoPaths: string[], de
 
       // Find the input element and upload the hardcoded video
       const fileInputElement = page.locator('input[type="file"]');
-      await fileInputElement.setInputFiles(videoPath);
+      await fileInputElement.setInputFiles(video.video);
 
       // Find the "Next" button on the plublish dialog which opens when video is uploaded
       const nextButton = page.getByLabel("Next");
 
-      // Select the default values to proceed for now
+      // Adding Values like title, description, thumbnail, url.
+      const { title, description, image, url } = video;
+
+      // Create Locators for title, description, image
+      const titleLocator = page.getByLabel("Add a title that describes your video (type @ to mention a channel)", {
+        exact: true,
+      });
+      const descriptionLocator = page.getByLabel("Tell viewers about your video (type @ to mention a channel)", {
+        exact: true,
+      });
+      const thumbnailButton = page.getByText("Upload file", { exact: true });
+
+      // Set the listener(for uploading image for thumbnail via fileChooser) before clicking the button to avoid race condition where the listener could miss the event if it was set after the click.
+      page.on("filechooser", async (fileChooser) => {
+        // Set the file for upload
+        if (typeof image === "string") {
+          await fileChooser.setFiles(image);
+        }
+      });
+
+      // Fill values
+      if (title.length > 0) {
+        await titleLocator.fill(title);
+      }
+
+      const youtubeDescription = typeof description === "string" ? `${description} ${url ?? ""}` : url;
+      if (typeof youtubeDescription === "string") {
+        await descriptionLocator.fill(youtubeDescription);
+      }
+
+      // Click on Upload file button to open file chooser for uploading image
+      await thumbnailButton.click();
 
       // Find and Click the radio button with label ("Yes, it's made for kids") and click "Next"
       const kidsRadioButtonLabel = page.getByRole("radio", { name: "Yes, it's made for kids" });
@@ -79,7 +112,7 @@ async function uploadToYoutube(context: BrowserContext, videoPaths: string[], de
   }
 }
 
-async function uploadToX(context: BrowserContext, videoPaths: string[], delayBetweenPosts = 5000) {
+async function uploadToX(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
 
   try {
@@ -89,7 +122,7 @@ async function uploadToX(context: BrowserContext, videoPaths: string[], delayBet
     // Wait for the user to sign in and the "Add photos or video" button to appear
     await page.getByRole("button", { name: "Add photos or video" }).waitFor({ state: "visible" });
 
-    for (const videoPath of videoPaths) {
+    for (const video of videos) {
       try {
         // Click the "Add photos or video" button
         const createButton = page.getByRole("button", { name: "Add photos or video" });
@@ -97,7 +130,7 @@ async function uploadToX(context: BrowserContext, videoPaths: string[], delayBet
 
         // Find the input element and upload the video
         const fileInputElement = page.getByTestId("fileInput");
-        await fileInputElement.setInputFiles(videoPath);
+        await fileInputElement.setInputFiles(video.video);
 
         // Wait for the 'Post' button to appear and click it
         const publishButton = page.getByTestId("tweetButtonInline");
@@ -113,7 +146,7 @@ async function uploadToX(context: BrowserContext, videoPaths: string[], delayBet
   }
 }
 
-async function uploadToInstagram(context: BrowserContext, videoPaths: string[], delayBetweenPosts = 5000) {
+async function uploadToInstagram(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
 
   try {
@@ -121,7 +154,7 @@ async function uploadToInstagram(context: BrowserContext, videoPaths: string[], 
     await page.goto("https://www.instagram.com/");
     await closeBlankPage(context);
 
-    for (const videoPath of videoPaths) {
+    for (const video of videos) {
       // Wait for the user to be signed in and the "New post" button to appear
       const newPostButton = page.getByRole("img", { name: "New post", exact: true });
       await newPostButton.waitFor({ state: "visible", timeout: 0 });
@@ -131,18 +164,24 @@ async function uploadToInstagram(context: BrowserContext, videoPaths: string[], 
 
       // Wait for the "Post" button to be visible and click it
       const filePostButton = page.getByRole("img", { name: "Post", exact: true });
-      await filePostButton.waitFor({ state: "visible", timeout: 0 });
-      await filePostButton.click();
+      const filePostButtonVisible = await filePostButton.isVisible();
+      // After we click "newPostButton" the "filePostButton" may or may not occur for some instagram account. For some account the "newPostButton" itself opens the dialog box for video upload.
+      if (filePostButtonVisible === true) {
+        await filePostButton.click();
+      }
 
       // Wait for the file input to appear and upload the video
       const fileInput = page.locator('input[type="file"]');
-      await fileInput.setInputFiles(videoPath);
+      await fileInput.setInputFiles(video.video);
 
       // Wait for the first "Next" button to appear and click it
       // This is the initial "Next" button in the posting flow, which transitions the user to the next step (i.e. cropping)
       const nextButton = page.getByRole("button", { name: "Next", exact: true });
       await nextButton.waitFor({ state: "visible", timeout: 0 });
       await nextButton.click();
+
+      // Add image as thumbnail
+      await fileInput.setInputFiles(video.image ?? "");
 
       // Wait for the second "Next" button to appear and click it
       // This "Next" button appears on the final review screen ( where edits or adjustments can be made ).
@@ -152,6 +191,12 @@ async function uploadToInstagram(context: BrowserContext, videoPaths: string[], 
         .getByRole("dialog", { name: "Edit", exact: true }) // Target the parent dialog with the specific name "Edit"
         .getByRole("button", { name: "Next", exact: true }); // Locate the "Next" button inside the targeted dialog
       await finalNextButton.click();
+
+      // Adding Values like title, description, url.
+      const { title, description, url } = video;
+      const content = page.getByLabel("Write a caption...", { exact: true });
+      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim();
+      await content.fill(text);
 
       // Wait for the "Share" button to appear and click it
       const shareButton = page.getByRole("button", { name: "Share", exact: true });
@@ -171,7 +216,7 @@ async function uploadToInstagram(context: BrowserContext, videoPaths: string[], 
   }
 }
 
-async function uploadToLinkedIn(context: BrowserContext, videoPaths: string[], delayBetweenPosts = 5000) {
+async function uploadToLinkedIn(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
 
   try {
@@ -179,7 +224,7 @@ async function uploadToLinkedIn(context: BrowserContext, videoPaths: string[], d
     await page.goto("https://www.linkedin.com/feed/");
     await closeBlankPage(context);
 
-    for (const videoPath of videoPaths) {
+    for (const video of videos) {
       // Wait for the "Add a video" button to be visible on the page and initiates the video upload process
       const videoButton = page.getByLabel("Add a video");
       await videoButton.waitFor({ state: "visible", timeout: 0 });
@@ -187,11 +232,20 @@ async function uploadToLinkedIn(context: BrowserContext, videoPaths: string[], d
       // Set the listener before clicking the button to avoid race condition where the listener could miss the event if it was set after the click.
       page.on("filechooser", async (fileChooser) => {
         // Set the file for upload
-        await fileChooser.setFiles(videoPath);
+        await fileChooser.setFiles(video.video);
       });
 
       // Now click the "Add a video" button
       await videoButton.click();
+
+      // Add image as thumbnail
+      const thumbnail = page.getByRole("button", { name: "Video thumbnail" });
+      const fileInputElement = page.locator('input[type="file"]');
+      const addImageButton = page.getByRole("button", { name: "Add" });
+
+      await thumbnail.click();
+      await fileInputElement.setInputFiles(video.image ?? "");
+      await addImageButton.click();
 
       // Wait for the "Next" button to appear and be visible on the page
       const nextButton = page.getByRole("button", { name: "Next", exact: true });
@@ -199,6 +253,12 @@ async function uploadToLinkedIn(context: BrowserContext, videoPaths: string[], d
 
       // Click the "Next" button to confirm and proceed
       await nextButton.click();
+
+      // Adding Values like title, description, url.
+      const { title, description, url } = video;
+      const editor = page.getByRole("textbox", { name: "Text editor for creating" });
+      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim(); // using trim() helps to remove empty lines if either of the values are missing
+      await editor.fill(text);
 
       // Wait for the "Post" button to appear and be visible on the page, finalizes and publishes the post with the uploaded video.
       const postButton = page.getByRole("button", { name: "Post", exact: true });
@@ -217,7 +277,7 @@ async function uploadToLinkedIn(context: BrowserContext, videoPaths: string[], d
   }
 }
 
-async function uploadToTiktok(context: BrowserContext, videoPaths: string[], delayBetweenPosts = 5000) {
+async function uploadToTiktok(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
 
   try {
@@ -225,9 +285,22 @@ async function uploadToTiktok(context: BrowserContext, videoPaths: string[], del
     await closeBlankPage(context);
 
     // Wait for the user to sign in and locate the file input element and append video to it
-    for (const videoPath of videoPaths) {
+    for (const video of videos) {
       const fileInputElement = page.locator('input[type="file"]');
-      await fileInputElement.setInputFiles(videoPath);
+      await fileInputElement.setInputFiles(video.video);
+
+      // Adding Values like title, description, url.
+      const { title, description, url } = video;
+
+      // Create Locators
+      const editor = page.locator('div[role="combobox"][contenteditable="true"]');
+
+      // fill values
+      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim(); // using trim() helps to remove empty lines if either of the values are missing
+      await editor.click(); // To write into contentediable "div" we first have to focus on it by clicking it.
+      await editor.clear(); // Tiktok itself puts the video name in the editor, hence first clear it and then fill text.
+      await editor.fill(text);
+
       // Using "timeout: 0" to prevent timeout error if a video of a larger size needs to be uploaded, 0 sets Timeout to infinity.
       // We use { exact: true } to ensure that the label "Uploaded" is matched exactly, without allowing partial matches.
       await page.getByAltText("Uploaded", { exact: true }).waitFor({ state: "visible", timeout: 0 });
@@ -243,14 +316,14 @@ async function uploadToTiktok(context: BrowserContext, videoPaths: string[], del
   }
 }
 
-async function uploadToFacebook(context: BrowserContext, videoPaths: string[], delayBetweenPosts = 5000) {
+async function uploadToFacebook(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
 
   try {
     await page.goto("https://www.facebook.com/");
     await closeBlankPage(context);
 
-    for (const videoPath of videoPaths) {
+    for (const video of videos) {
       // Find and click "Photo/vidoe" button
       const uploadButton = page.getByRole("button", { name: "Photo/video" });
       // Wait for "Photo/video" button to come on screen, as the user must be signin into Facebook.
@@ -260,7 +333,13 @@ async function uploadToFacebook(context: BrowserContext, videoPaths: string[], d
 
       // Find the input element and upload video
       const fileInput = page.locator('input[type="file"]');
-      await fileInput.setInputFiles(videoPath);
+      await fileInput.setInputFiles([video.video, video.image ?? ""]); // In Facebook, there is single input box for both image and video and the mutiple property is set to true.
+
+      // Adding Values like title, description, url.
+      const { title, description, url } = video;
+      const content = page.getByLabel("What's on your mind", { exact: false }); // exact: false is used for partial match as the Label can vary user-to-user (e.g. What's on your mind, {Username})
+      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim();
+      await content.fill(text);
 
       // Find and click the "Post" button.
       const postButton = page.getByRole("button", { name: "Post", exact: true });
@@ -275,16 +354,16 @@ async function uploadToFacebook(context: BrowserContext, videoPaths: string[], d
   }
 }
 
-async function uploadToPinterest(context: BrowserContext, videoPaths: string[], delayBetweenPosts = 5000) {
+async function uploadToPinterest(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
   try {
     // Wait for the user to sign in and navigate to the create Tab
     await page.goto("https://www.pinterest.com/pin-creation-tool/");
     await closeBlankPage(context);
-    for (const videoPath of videoPaths) {
+    for (const video of videos) {
       // Locate the file input element and append video to it
       const fileInputElement = page.locator('input[type="file"]');
-      await fileInputElement.setInputFiles(videoPath);
+      await fileInputElement.setInputFiles(video.video);
       // Wait for the text "Changes Stored!" to appear and then click on the publish button.
       // Using "timeout: 0" to prevent timeout error if a video of a larger size needs to be uploaded, 0 sets Timeout to infinity.
       await page.getByText("Changes stored!", { exact: true }).waitFor({ state: "visible", timeout: 0 });
@@ -299,25 +378,31 @@ async function uploadToPinterest(context: BrowserContext, videoPaths: string[], 
   }
 }
 
-async function uploadToThreads(context: BrowserContext, videoPaths: string[], delayBetweenPosts = 5000) {
+async function uploadToThreads(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
   try {
     // Wait for the user to sign in and navigate to home page
     // Wait for the user to sign in and navigate to home page
     await page.goto("https://www.threads.net/");
     await closeBlankPage(context);
-    for (const videoPath of videoPaths) {
+    for (const video of videos) {
       // locate and click the Post button to make the upload modal open
       const createButton = page.getByRole("button", { name: "Post", exact: true });
       await createButton.waitFor({ state: "visible", timeout: 0 });
       await createButton.click();
+
       // locate the file input element and append video to it
       const fileInput = page.locator('input[type="file"]');
-      await fileInput.setInputFiles(videoPath);
-      // Directly locate the button by combining role and tabindex
-      // We're using `tabIndex` here because there are two "Post" buttons on the same page with identical classes and attributes.
-      // The `tabIndex` value is unique for each button, so we use it to differentiate and select the correct "Post" button.
-      const postButton = page.locator('[role="button"][tabindex="-1"]', { hasText: "Post" });
+      await fileInput.setInputFiles(video.video);
+
+      // Adding Values like title, description.
+      const { title, description, url } = video;
+      const editor = page.getByRole("textbox");
+      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim();
+      await editor.fill(text);
+
+      // Get the "Post" button and click to post the video.
+      const postButton = page.getByRole("button", { name: "Post", exact: true });
       await postButton.waitFor({ state: "visible", timeout: 0 });
       await postButton.click();
       // Waiting for "Role: Alert" to get attached to the DOM.
@@ -331,21 +416,9 @@ async function uploadToThreads(context: BrowserContext, videoPaths: string[], de
   }
 }
 
-export const Platform = {
-  Youtube: "youtube",
-  X: "x",
-  Facebook: "facebook",
-  TikTok: "tiktok",
-  Pinterest: "pinterest",
-  Threads: "threads",
-  Instagram: "instagram",
-  LinkedIn: "linkedIn",
-} as const;
-export type Platform = (typeof Platform)[keyof typeof Platform];
-
 export const PlatformHandlers: Record<
   Platform,
-  (context: BrowserContext, videoPaths: string[], delayBetweenPosts?: number) => Promise<void>
+  (context: BrowserContext, videos: VideoDetails[], delayBetweenPosts?: number) => Promise<void>
 > = {
   [Platform.Youtube]: uploadToYoutube,
   [Platform.Facebook]: uploadToFacebook,
