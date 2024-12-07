@@ -124,18 +124,34 @@ async function uploadToX(context: BrowserContext, videos: VideoDetails[], delayB
 
     for (const video of videos) {
       try {
-        // Click the "Add photos or video" button
-        const createButton = page.getByRole("button", { name: "Add photos or video" });
-        await createButton.click();
-
         // Find the input element and upload the video
         const fileInputElement = page.getByTestId("fileInput");
         await fileInputElement.setInputFiles(video.video);
 
-        // Wait for the 'Post' button to appear and click it
+        // Wait for the video upload process to start. This is indicated by a UI change where a suggestion to add subtitles becomes visible.
+        await page.getByTestId("addSubtitlesLabel").waitFor({ state: "visible", timeout: 0 });
+
+        // Adding Values like title, description.
+        const { title, description, url } = video;
+        const content = page.getByLabel("Post text", { exact: true });
+        const text = `${title}\n${description ?? ""}`.trim();
+        await content.fill(text);
+
+        // Wait for the 'Post' button to appear and click it.
         const publishButton = page.getByTestId("tweetButtonInline");
-        await publishButton.waitFor({ state: "visible" });
+        await publishButton.waitFor({ state: "visible", timeout: 0 });
         await publishButton.click();
+
+        // Add the URL as the first comment on the newly created post.
+        // Since the uploaded post appears at the top of the feed, click the comment/reply button of the first post using ".first()".
+        const commentButton = page.getByLabel("0 Replies. Reply", { exact: true }).first();
+        await commentButton.waitFor({ state: "visible", timeout: 0 });
+        await commentButton.click();
+        await page.keyboard.type(url ?? ""); // Clicking the comment button opens a dialog with the cursor already focused, hence `keyboard.type` to enter the URL into the dialog box.
+        // Add the url by posting comment
+        const postComment = page.getByTestId("tweetButton");
+        await postComment.click();
+
         await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
       } catch (err) {
         console.log(err);
@@ -277,6 +293,55 @@ async function uploadToLinkedIn(context: BrowserContext, videos: VideoDetails[],
   }
 }
 
+async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[]) {
+  const page = await context.newPage();
+
+  try {
+    // Navigate to Snapchat website
+    await page.goto("https://my.snapchat.com/");
+    await closeBlankPage(context);
+
+    for (const video of videos) {
+      // Locate the file input and upload the video
+      const fileInput = page.locator('input[type="file"]');
+      await fileInput.setInputFiles(video.video);
+
+      // Wait for the 'Post to Spotlight' button to be visible,
+      const spotlightButton = page.getByText("Post to Spotlight");
+      await spotlightButton.waitFor({ state: "visible", timeout: 0 }); // Wait for visibility
+      // Click to select the target of posting video to only Spotlight
+      await spotlightButton.click();
+
+      // Handle the case where the "Agree to Spotlight Terms" button is visible
+      const termsButton = page.getByText("Agree to Spotlight Terms");
+      const termsButtonVisibility = await termsButton.isVisible();
+      if (termsButtonVisibility === true) {
+        await termsButton.click();
+      }
+
+      // Close the Spotlight terms popup if the "Close" button is visible
+      const termsCloseButton = page.getByText("Close");
+      const termsCloseButtonVisibility = await termsCloseButton.isVisible();
+      if (termsCloseButtonVisibility === true) {
+        await termsCloseButton.click();
+      }
+
+      // Wait for the 'Post to Snapchat' button to be visible, then click to post the video
+      const postButton = page.getByRole("button", { name: "Post to Snapchat", exact: true });
+      await postButton.waitFor({ state: "visible", timeout: 0 });
+      // Wait indefinitely for the 'Post to Snapchat' button to become visible and enabled, then click it after CAPTCHA resolution.
+      await postButton.click({ timeout: 0 }); // Click to post the video
+
+      // Close the confirmation popup after video is posted
+      const confirmationCloseButton = page.getByRole("button", { name: "Close", exact: true });
+      await confirmationCloseButton.waitFor({ state: "visible", timeout: 0 });
+      await confirmationCloseButton.click();
+    }
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 async function uploadToTiktok(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
 
@@ -333,7 +398,7 @@ async function uploadToFacebook(context: BrowserContext, videos: VideoDetails[],
 
       // Find the input element and upload video
       const fileInput = page.locator('input[type="file"]');
-      await fileInput.setInputFiles([video.video, video.image ?? ""]); // In Facebook, there is single input box for both image and video and the mutiple property is set to true.
+      await fileInput.setInputFiles(video.video);
 
       // Adding Values like title, description, url.
       const { title, description, url } = video;
@@ -364,6 +429,26 @@ async function uploadToPinterest(context: BrowserContext, videos: VideoDetails[]
       // Locate the file input element and append video to it
       const fileInputElement = page.locator('input[type="file"]');
       await fileInputElement.setInputFiles(video.video);
+
+      // Please note that the title, description and other fields gets enable to fill with text after the video is selected.
+      // Adding values like title, description, link
+      const { title, description, url } = video;
+      const titleLocator = page.getByPlaceholder("Add a title", { exact: true });
+      const descriptionLocator = page.locator('[data-test-id="editor-with-mentions"]');
+      const linkLocator = page.getByPlaceholder("Add a link", { exact: true });
+
+      // Fill values
+      await titleLocator.fill(title);
+      // The description box is a div with contenteditable true, so first click on it to focus, and then insert the description
+      await descriptionLocator.click();
+      await page.keyboard.insertText(description ?? "");
+      if (typeof url === "string") {
+        await linkLocator.fill(url);
+        await page.getByRole("button", { name: "Publish" }).click(); // When we click on "Publish" button, URL verification starts, once it is end we again click "Publish" button.
+        await page.getByText("Just a moment, we are checking that link").waitFor({ state: "attached" });
+        await page.getByText("Just a moment, we are checking that link").waitFor({ state: "detached" });
+      }
+
       // Wait for the text "Changes Stored!" to appear and then click on the publish button.
       // Using "timeout: 0" to prevent timeout error if a video of a larger size needs to be uploaded, 0 sets Timeout to infinity.
       await page.getByText("Changes stored!", { exact: true }).waitFor({ state: "visible", timeout: 0 });
@@ -428,4 +513,5 @@ export const PlatformHandlers: Record<
   [Platform.TikTok]: uploadToTiktok,
   [Platform.Pinterest]: uploadToPinterest,
   [Platform.X]: uploadToX,
+  [Platform.Snapchat]: uploadToSnapchat,
 };

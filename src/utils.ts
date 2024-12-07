@@ -7,6 +7,7 @@ export const Platform = {
   Threads: "threads",
   Instagram: "instagram",
   LinkedIn: "linkedIn",
+  Snapchat: "snapchat",
 } as const;
 export type Platform = (typeof Platform)[keyof typeof Platform];
 
