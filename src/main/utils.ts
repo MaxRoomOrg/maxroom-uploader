@@ -293,7 +293,7 @@ async function uploadToLinkedIn(context: BrowserContext, videos: VideoDetails[],
   }
 }
 
-async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[]) {
+async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
 
   try {
@@ -302,15 +302,43 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[])
     await closeBlankPage(context);
 
     for (const video of videos) {
-      // Locate the file input and upload the video
-      const fileInput = page.locator('input[type="file"]');
-      await fileInput.setInputFiles(video.video);
+      // Using page.on("filechooser") to handle file uploads because there are two input elements on the page
+      // with the same functionality (single video upload). To ensure precision, we are specifically targeting
+      // the "Choose media" button input for the file upload process.
+      const chooseMediaButton = page.getByRole("button", { name: "Choose media", exact: true });
+      await chooseMediaButton.waitFor({ state: "visible", timeout: 0 });
 
-      // Wait for the 'Post to Spotlight' button to be visible,
-      const spotlightButton = page.getByText("Post to Spotlight");
-      await spotlightButton.waitFor({ state: "visible", timeout: 0 }); // Wait for visibility
-      // Click to select the target of posting video to only Spotlight
-      await spotlightButton.click();
+      // Set the listener before clicking the button to avoid race condition where the listener could miss the event if it was set after the click.
+      page.on("filechooser", async (fileChooser) => {
+        // Set the file for upload
+        await fileChooser.setFiles(video.video);
+      });
+
+      // Now click the "Choose media" button
+      await chooseMediaButton.click();
+
+      // Check if the Profile selector is visible: for the first video upload, it becomes visible only after clicking the 'Post to Spotlight' button.
+      // For subsequent uploads, it is already visible, and due to Snapchat UI inconsistencies, the 'Post to Spotlight' button must be clicked twice.
+
+      const isProfileSelectorVisible = await page
+        .locator('[id="__next"]')
+        .getByText("Profile", { exact: true })
+        .isVisible();
+
+      // CONDITIONAL BLOCK: Handle clicks on the 'Post to Spotlight' button based on Profile Selector visibility
+      if (isProfileSelectorVisible === false) {
+        // First time clicking - Use the original locator for 'Post to Spotlight' button
+        const spotlightButton = page.getByText("Post to Spotlight");
+        await spotlightButton.waitFor({ state: "visible", timeout: 0 }); // Wait for visibility
+        await spotlightButton.click();
+      } else {
+        // Subsequent clicks - Use a different locator for the 'Post to Spotlight' button
+        const spotlightButtonNew = page.locator('[id="__next"]').getByText("Post to Spotlight");
+
+        // Double click to handle inconsistent UI behavior
+        await spotlightButtonNew.waitFor({ state: "visible", timeout: 0 });
+        await spotlightButtonNew.dblclick();
+      }
 
       // Handle the case where the "Agree to Spotlight Terms" button is visible
       const termsButton = page.getByText("Agree to Spotlight Terms");
@@ -336,6 +364,13 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[])
       const confirmationCloseButton = page.getByRole("button", { name: "Close", exact: true });
       await confirmationCloseButton.waitFor({ state: "visible", timeout: 0 });
       await confirmationCloseButton.click();
+
+      // Click the 'New Post' button to prepare for the next video.
+      const newPostButton = page.getByRole("button", { name: "New Post", exact: true });
+      await newPostButton.waitFor({ state: "visible", timeout: 0 });
+      await newPostButton.click();
+
+      await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
   } catch (error) {
     console.log(error);

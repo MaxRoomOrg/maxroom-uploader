@@ -23,6 +23,7 @@ async function createWindow(): Promise<BrowserWindow> {
   // Creating a browser window
   const win = new BrowserWindow({
     title: "MaxRoom Uploader", // Ref: https://github.com/electron/electron/blob/main/docs/api/structures/browser-window-options.md?inline
+    width: 400,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
     },
@@ -115,7 +116,7 @@ async function setUpElectronApp(): Promise<void> {
     // Ref: https://www.electronjs.org/docs/latest/api/dialog#dialogshowopendialogwindow-options
     let filters: FileFilter[];
     if (mediaType === MediaType.Image) {
-      filters = [{ name: "Images", extensions: ["jpg", "png", "gif"] }];
+      filters = [{ name: "Images", extensions: ["jpg", "png", "gif", "webp"] }];
     } else {
       filters = [{ name: "Movies", extensions: ["mkv", "avi", "mp4", "webm"] }];
     }
