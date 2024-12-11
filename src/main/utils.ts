@@ -62,14 +62,6 @@ async function uploadToYoutube(context: BrowserContext, videos: VideoDetails[], 
       });
       const thumbnailButton = page.getByText("Upload file", { exact: true });
 
-      // Set the listener(for uploading image for thumbnail via fileChooser) before clicking the button to avoid race condition where the listener could miss the event if it was set after the click.
-      page.on("filechooser", async (fileChooser) => {
-        // Set the file for upload
-        if (typeof image === "string") {
-          await fileChooser.setFiles(image);
-        }
-      });
-
       // Fill values
       if (title.length > 0) {
         await titleLocator.fill(title);
@@ -80,8 +72,20 @@ async function uploadToYoutube(context: BrowserContext, videos: VideoDetails[], 
         await descriptionLocator.fill(youtubeDescription);
       }
 
-      // Click on Upload file button to open file chooser for uploading image
-      await thumbnailButton.click();
+      // Check if thumbnail option is available or not, as it depends on video lenght we are uploading
+      const isThumbnailOptionVisible = await thumbnailButton.isVisible();
+      if (isThumbnailOptionVisible === true) {
+        // Set the listener(for uploading image for thumbnail via fileChooser) before clicking the button to avoid race condition where the listener could miss the event if it was set after the click.
+        page.on("filechooser", async (fileChooser) => {
+          // Set the file for upload
+          if (typeof image === "string") {
+            await fileChooser.setFiles(image);
+          }
+        });
+
+        // Click on Upload file button to open file chooser for uploading image
+        await thumbnailButton.click();
+      }
 
       // Find and Click the radio button with label ("Yes, it's made for kids") and click "Next"
       const kidsRadioButtonLabel = page.getByRole("radio", { name: "Yes, it's made for kids" });
@@ -139,18 +143,29 @@ async function uploadToX(context: BrowserContext, videos: VideoDetails[], delayB
 
         // Wait for the 'Post' button to appear and click it.
         const publishButton = page.getByTestId("tweetButtonInline");
-        await publishButton.waitFor({ state: "visible", timeout: 0 });
-        await publishButton.click();
+        await publishButton.waitFor({ state: "visible" });
+        await publishButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button get enabled, because this button remains disable until the video is uploaded completely.
 
-        // Add the URL as the first comment on the newly created post.
-        // Since the uploaded post appears at the top of the feed, click the comment/reply button of the first post using ".first()".
-        const commentButton = page.getByLabel("0 Replies. Reply", { exact: true }).first();
-        await commentButton.waitFor({ state: "visible", timeout: 0 });
-        await commentButton.click();
-        await page.keyboard.type(url ?? ""); // Clicking the comment button opens a dialog with the cursor already focused, hence `keyboard.type` to enter the URL into the dialog box.
-        // Add the url by posting comment
-        const postComment = page.getByTestId("tweetButton");
-        await postComment.click();
+        if (typeof url === "string" && url.length > 0) {
+          // Use a robust method to add the URL as the first comment to the newly created post.
+          // Locate the post using the same text that was just posted and click on it, this will navigate us to newly created post.
+          const createdPost = page.getByText(text, { exact: true });
+          await createdPost.waitFor({ state: "visible", timeout: 0 });
+          await createdPost.click();
+
+          // Wait for the content to load to ensure the DOM is fully ready before interacting with elements.
+          // This prevents mistakenly selecting the textbox (with label Post text) from the homepage while the new page is still loading.
+          await page.waitForLoadState("domcontentloaded");
+          const replyBox = page.getByLabel("Post text");
+          await replyBox.fill(url);
+
+          // Add the url as first comment
+          const postComment = page.getByTestId("tweetButtonInline");
+          await postComment.click();
+
+          // Redirect to home page again for further Posting.
+          await page.goto("https://x.com/home");
+        }
 
         await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
       } catch (err) {
@@ -319,7 +334,6 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[],
 
       // Check if the Profile selector is visible: for the first video upload, it becomes visible only after clicking the 'Post to Spotlight' button.
       // For subsequent uploads, it is already visible, and due to Snapchat UI inconsistencies, the 'Post to Spotlight' button must be clicked twice.
-
       const isProfileSelectorVisible = await page
         .locator('[id="__next"]')
         .getByText("Profile", { exact: true })
@@ -334,30 +348,34 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[],
       } else {
         // Subsequent clicks - Use a different locator for the 'Post to Spotlight' button
         const spotlightButtonNew = page.locator('[id="__next"]').getByText("Post to Spotlight");
-
         // Double click to handle inconsistent UI behavior
         await spotlightButtonNew.waitFor({ state: "visible", timeout: 0 });
         await spotlightButtonNew.dblclick();
       }
 
       // Handle the case where the "Agree to Spotlight Terms" button is visible
-      const termsButton = page.getByText("Agree to Spotlight Terms");
-      const termsButtonVisibility = await termsButton.isVisible();
-      if (termsButtonVisibility === true) {
-        await termsButton.click();
+      const agreeTermsButton = page.getByText("Agree to Spotlight Terms");
+      const isAgreeTermsButtonVisible = await agreeTermsButton.isVisible();
+      if (isAgreeTermsButtonVisible === true) {
+        await agreeTermsButton.click();
       }
 
       // Close the Spotlight terms popup if the "Close" button is visible
       const termsCloseButton = page.getByText("Close");
-      const termsCloseButtonVisibility = await termsCloseButton.isVisible();
-      if (termsCloseButtonVisibility === true) {
+      const isTermsCloseButtonVisible = await termsCloseButton.isVisible();
+      if (isTermsCloseButtonVisible === true) {
         await termsCloseButton.click();
       }
 
-      // Wait for the 'Post to Snapchat' button to be visible, then click to post the video
+      // Adding Values like title, description, url.
+      const { title, description, url } = video;
+      const content = page.getByPlaceholder("Add a description and #topics", { exact: true });
+      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim();
+      await content.fill(text);
+
+      // Wait infinitely for the button to become clickable because sometimes a captcha appears, and we need to wait until it is solved
       const postButton = page.getByRole("button", { name: "Post to Snapchat", exact: true });
       await postButton.waitFor({ state: "visible", timeout: 0 });
-      // Wait indefinitely for the 'Post to Snapchat' button to become visible and enabled, then click it after CAPTCHA resolution.
       await postButton.click({ timeout: 0 }); // Click to post the video
 
       // Close the confirmation popup after video is posted
@@ -480,8 +498,6 @@ async function uploadToPinterest(context: BrowserContext, videos: VideoDetails[]
       if (typeof url === "string") {
         await linkLocator.fill(url);
         await page.getByRole("button", { name: "Publish" }).click(); // When we click on "Publish" button, URL verification starts, once it is end we again click "Publish" button.
-        await page.getByText("Just a moment, we are checking that link").waitFor({ state: "attached" });
-        await page.getByText("Just a moment, we are checking that link").waitFor({ state: "detached" });
       }
 
       // Wait for the text "Changes Stored!" to appear and then click on the publish button.
@@ -489,8 +505,8 @@ async function uploadToPinterest(context: BrowserContext, videos: VideoDetails[]
       await page.getByText("Changes stored!", { exact: true }).waitFor({ state: "visible", timeout: 0 });
       // We don't need state: "visible" here because in pinterest , the publish button is visible from the very beginning.
       await page.getByRole("button", { name: "Publish" }).click();
-      // When we click "Publish" button, the button text changes to "Publishing". So, to upload mutliple videos we need the Publish button ready again.
-      await page.getByRole("button", { name: "Publish" }).waitFor({ state: "visible", timeout: 0 });
+      // wait for completion of publish before moving to upload next video or close the browser otherwise it will save as draft.
+      await page.getByText("Your Pin has been published!").waitFor({ state: "visible", timeout: 0 });
       await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
   } catch (error: unknown) {
