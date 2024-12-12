@@ -124,7 +124,7 @@ async function uploadToX(context: BrowserContext, videos: VideoDetails[], delayB
     await closeBlankPage(context);
 
     // Wait for the user to sign in and the "Add photos or video" button to appear
-    await page.getByRole("button", { name: "Add photos or video" }).waitFor({ state: "visible" });
+    await page.getByRole("button", { name: "Add photos or video" }).waitFor({ state: "visible", timeout: 0 });
 
     for (const video of videos) {
       // Find the input element and upload the video
