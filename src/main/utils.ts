@@ -127,50 +127,44 @@ async function uploadToX(context: BrowserContext, videos: VideoDetails[], delayB
     await page.getByRole("button", { name: "Add photos or video" }).waitFor({ state: "visible" });
 
     for (const video of videos) {
-      try {
-        // Find the input element and upload the video
-        const fileInputElement = page.getByTestId("fileInput");
-        await fileInputElement.setInputFiles(video.video);
+      // Find the input element and upload the video
+      const fileInputElement = page.getByTestId("fileInput");
+      await fileInputElement.setInputFiles(video.video);
 
-        // Wait for the video upload process to start. This is indicated by a UI change where a suggestion to add subtitles becomes visible.
-        await page.getByTestId("addSubtitlesLabel").waitFor({ state: "visible", timeout: 0 });
+      // Wait for the video upload process to start. This is indicated by a UI change where a suggestion to add subtitles becomes visible.
+      await page.getByTestId("addSubtitlesLabel").waitFor({ state: "visible", timeout: 0 });
 
-        // Adding Values like title, description.
-        const { title, description, url } = video;
-        const content = page.getByLabel("Post text", { exact: true });
-        const text = `${title}\n${description ?? ""}`.trim();
-        await content.fill(text);
+      // Adding Values like title, description.
+      const { title, description, url } = video;
+      const content = page.getByLabel("Post text", { exact: true });
+      const text = `${title}\n${description ?? ""}`.trim();
+      await content.fill(text);
 
-        // Wait for the 'Post' button to appear and click it.
-        const publishButton = page.getByTestId("tweetButtonInline");
-        await publishButton.waitFor({ state: "visible" });
-        await publishButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button get enabled, because this button remains disable until the video is uploaded completely.
+      // Wait for the 'Post' button to appear and click it.
+      const publishButton = page.getByTestId("tweetButtonInline");
+      await publishButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
 
-        if (typeof url === "string" && url.length > 0) {
-          // Use a robust method to add the URL as the first comment to the newly created post.
-          // Locate the post using the same text that was just posted and click on it, this will navigate us to newly created post.
-          const createdPost = page.getByText(text, { exact: true });
-          await createdPost.waitFor({ state: "visible", timeout: 0 });
-          await createdPost.click();
+      if (typeof url === "string" && url.length > 0) {
+        // Use a robust method to add the URL as the first comment to the newly created post.
+        // Locate the post using the same text that was just posted and click on it, this will navigate us to newly created post.
+        const createdPost = page.getByText(text, { exact: true });
+        await createdPost.click({ timeout: 0 }); // Timeout: 0 is added to wait for the newly created post to be visible and then click it.
 
-          // Wait for the content to load to ensure the DOM is fully ready before interacting with elements.
-          // This prevents mistakenly selecting the textbox (with label Post text) from the homepage while the new page is still loading.
-          await page.waitForLoadState("domcontentloaded");
-          const replyBox = page.getByLabel("Post text");
-          await replyBox.fill(url);
+        // Wait for the content to load to ensure the DOM is fully ready before interacting with elements.
+        // This prevents mistakenly selecting the textbox (with label Post text) from the homepage while the new page is still loading.
+        await page.waitForLoadState("domcontentloaded");
+        const replyBox = page.getByLabel("Post text");
+        await replyBox.fill(url);
 
-          // Add the url as first comment
-          const postComment = page.getByTestId("tweetButtonInline");
-          await postComment.click();
+        // Add the url as first comment
+        const postComment = page.getByTestId("tweetButtonInline");
+        await postComment.click();
 
-          // Redirect to home page again for further Posting.
-          await page.goto("https://x.com/home");
-        }
-
-        await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
-      } catch (err) {
-        console.log(err);
+        // Redirect to home page again for further Posting.
+        await page.goto("https://x.com/home");
       }
+
+      await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
   } catch (error) {
     console.error("An error occurred while uploading videos:", error);
@@ -188,10 +182,7 @@ async function uploadToInstagram(context: BrowserContext, videos: VideoDetails[]
     for (const video of videos) {
       // Wait for the user to be signed in and the "New post" button to appear
       const newPostButton = page.getByRole("img", { name: "New post", exact: true });
-      await newPostButton.waitFor({ state: "visible", timeout: 0 });
-
-      // Click on the "New post" button
-      await newPostButton.click();
+      await newPostButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
 
       // Wait for the "Post" button to be visible and click it
       const filePostButton = page.getByRole("img", { name: "Post", exact: true });
@@ -208,8 +199,7 @@ async function uploadToInstagram(context: BrowserContext, videos: VideoDetails[]
       // Wait for the first "Next" button to appear and click it
       // This is the initial "Next" button in the posting flow, which transitions the user to the next step (i.e. cropping)
       const nextButton = page.getByRole("button", { name: "Next", exact: true });
-      await nextButton.waitFor({ state: "visible", timeout: 0 });
-      await nextButton.click();
+      await nextButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
 
       // Add image as thumbnail
       await fileInput.setInputFiles(video.image ?? "");
@@ -231,15 +221,13 @@ async function uploadToInstagram(context: BrowserContext, videos: VideoDetails[]
 
       // Wait for the "Share" button to appear and click it
       const shareButton = page.getByRole("button", { name: "Share", exact: true });
-      await shareButton.waitFor({ state: "visible", timeout: 0 });
-      await shareButton.click();
+      await shareButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
 
       const imgElement = page.getByAltText("Animated checkmark");
       await imgElement.waitFor({ state: "visible", timeout: 0 }); // wait for the upload confirmation of the post
 
       const exitButton = page.getByRole("img", { name: "Close", exact: true });
-      await exitButton.waitFor({ state: "visible", timeout: 0 });
-      await exitButton.click();
+      await exitButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
       await sleep(delayBetweenPosts);
     }
   } catch (err) {
@@ -256,9 +244,7 @@ async function uploadToLinkedIn(context: BrowserContext, videos: VideoDetails[],
     await closeBlankPage(context);
 
     for (const video of videos) {
-      // Wait for the "Add a video" button to be visible on the page and initiates the video upload process
       const videoButton = page.getByLabel("Add a video");
-      await videoButton.waitFor({ state: "visible", timeout: 0 });
 
       // Set the listener before clicking the button to avoid race condition where the listener could miss the event if it was set after the click.
       page.on("filechooser", async (fileChooser) => {
@@ -266,8 +252,8 @@ async function uploadToLinkedIn(context: BrowserContext, videos: VideoDetails[],
         await fileChooser.setFiles(video.video);
       });
 
-      // Now click the "Add a video" button
-      await videoButton.click();
+      // Wait for the "Add a video" button to be visible and click and initiates the video upload process
+      await videoButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
 
       // Add image as thumbnail
       const thumbnail = page.getByRole("button", { name: "Video thumbnail" });
@@ -278,12 +264,9 @@ async function uploadToLinkedIn(context: BrowserContext, videos: VideoDetails[],
       await fileInputElement.setInputFiles(video.image ?? "");
       await addImageButton.click();
 
-      // Wait for the "Next" button to appear and be visible on the page
+      // Wait for the "Next" button to appear and be visible on the page and then click
       const nextButton = page.getByRole("button", { name: "Next", exact: true });
-      await nextButton.waitFor({ state: "visible" });
-
-      // Click the "Next" button to confirm and proceed
-      await nextButton.click();
+      await nextButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
 
       // Adding Values like title, description, url.
       const { title, description, url } = video;
@@ -293,10 +276,7 @@ async function uploadToLinkedIn(context: BrowserContext, videos: VideoDetails[],
 
       // Wait for the "Post" button to appear and be visible on the page, finalizes and publishes the post with the uploaded video.
       const postButton = page.getByRole("button", { name: "Post", exact: true });
-      await postButton.waitFor({ state: "visible" });
-
-      // Click the "Post" button to publish the video
-      await postButton.click();
+      await postButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
 
       //Wait For the Post to Upload
       const processingTextLocator = page.getByText("Upload complete. We’ll notify you when your post is ready.");
@@ -321,7 +301,6 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[],
       // with the same functionality (single video upload). To ensure precision, we are specifically targeting
       // the "Choose media" button input for the file upload process.
       const chooseMediaButton = page.getByRole("button", { name: "Choose media", exact: true });
-      await chooseMediaButton.waitFor({ state: "visible", timeout: 0 });
 
       // Set the listener before clicking the button to avoid race condition where the listener could miss the event if it was set after the click.
       page.on("filechooser", async (fileChooser) => {
@@ -329,8 +308,7 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[],
         await fileChooser.setFiles(video.video);
       });
 
-      // Now click the "Choose media" button
-      await chooseMediaButton.click();
+      await chooseMediaButton.click({ timeout: 0 }); // Using { timeout: 0 } to click until "Choose media" button is visible and enabled.
 
       // Check if the Profile selector is visible: for the first video upload, it becomes visible only after clicking the 'Post to Spotlight' button.
       // For subsequent uploads, it is already visible, and due to Snapchat UI inconsistencies, the 'Post to Spotlight' button must be clicked twice.
@@ -343,28 +321,20 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[],
       if (isProfileSelectorVisible === false) {
         // First time clicking - Use the original locator for 'Post to Spotlight' button
         const spotlightButton = page.getByText("Post to Spotlight");
-        await spotlightButton.waitFor({ state: "visible", timeout: 0 }); // Wait for visibility
-        await spotlightButton.click();
+        await spotlightButton.click({ timeout: 0 }); // Using { timeout: 0 } to click until "Post to Spotlight" button is visible and enabled.
       } else {
         // Subsequent clicks - Use a different locator for the 'Post to Spotlight' button
         const spotlightButtonNew = page.locator('[id="__next"]').getByText("Post to Spotlight");
-        // Double click to handle inconsistent UI behavior
-        await spotlightButtonNew.waitFor({ state: "visible", timeout: 0 });
-        await spotlightButtonNew.dblclick();
+        await spotlightButtonNew.dblclick({ timeout: 0 }); // Using { timeout: 0 } to click until "Post to Spotlight" button is visible and enabled.
       }
 
       // Handle the case where the "Agree to Spotlight Terms" button is visible
       const agreeTermsButton = page.getByText("Agree to Spotlight Terms");
+      const acceptTermsButton = page.getByRole("button", { name: "Accept", exact: true });
       const isAgreeTermsButtonVisible = await agreeTermsButton.isVisible();
       if (isAgreeTermsButtonVisible === true) {
         await agreeTermsButton.click();
-      }
-
-      // Close the Spotlight terms popup if the "Close" button is visible
-      const termsCloseButton = page.getByText("Close");
-      const isTermsCloseButtonVisible = await termsCloseButton.isVisible();
-      if (isTermsCloseButtonVisible === true) {
-        await termsCloseButton.click();
+        await acceptTermsButton.click({ timeout: 0 });
       }
 
       // Adding Values like title, description, url.
@@ -375,18 +345,15 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[],
 
       // Wait infinitely for the button to become clickable because sometimes a captcha appears, and we need to wait until it is solved
       const postButton = page.getByRole("button", { name: "Post to Snapchat", exact: true });
-      await postButton.waitFor({ state: "visible", timeout: 0 });
-      await postButton.click({ timeout: 0 }); // Click to post the video
+      await postButton.click({ timeout: 0 }); // Using { timeout: 0 } to click until "Post to Snapchat" button is visible and enabled.
 
       // Close the confirmation popup after video is posted
       const confirmationCloseButton = page.getByRole("button", { name: "Close", exact: true });
-      await confirmationCloseButton.waitFor({ state: "visible", timeout: 0 });
-      await confirmationCloseButton.click();
+      await confirmationCloseButton.click({ timeout: 0 }); // Using { timeout: 0 } to click until "Close" button is visible and enabled.
 
       // Click the 'New Post' button to prepare for the next video.
       const newPostButton = page.getByRole("button", { name: "New Post", exact: true });
-      await newPostButton.waitFor({ state: "visible", timeout: 0 });
-      await newPostButton.click();
+      await newPostButton.click({ timeout: 0 }); // Using { timeout: 0 } to click until "Next Post" button is visible and enabled.
 
       await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
