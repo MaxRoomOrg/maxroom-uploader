@@ -9,6 +9,9 @@ const electronAPI: ElectronAPI = {
   selectMedia: (mediaType: string) => {
     return ipcRenderer.invoke(IPCEvents.SelectMedia, mediaType);
   },
+  openBrowser: () => {
+    return ipcRenderer.invoke(IPCEvents.OpenBrowser);
+  },
 };
 
 contextBridge.exposeInMainWorld("electronAPI", electronAPI);

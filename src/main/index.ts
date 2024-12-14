@@ -116,7 +116,7 @@ async function setUpElectronApp(): Promise<void> {
     // Ref: https://www.electronjs.org/docs/latest/api/dialog#dialogshowopendialogwindow-options
     let filters: FileFilter[];
     if (mediaType === MediaType.Image) {
-      filters = [{ name: "Images", extensions: ["jpg", "png", "gif", "webp"] }];
+      filters = [{ name: "Images", extensions: ["jpg", "png", "gif", "webp", "jpeg"] }];
     } else {
       filters = [{ name: "Movies", extensions: ["mkv", "avi", "mp4", "webm"] }];
     }
@@ -130,6 +130,30 @@ async function setUpElectronApp(): Promise<void> {
     return output;
   });
 
+  ipcMain.handle(IPCEvents.OpenBrowser, async () => {
+    // Ref: https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context
+    const userDataDir = join(app.getPath("userData"), "playwright"); // Directory where session data will be stored
+    const context = await chromium.launchPersistentContext(userDataDir, {
+      headless: false,
+      channel: "chrome", // Uses the Chrome browser installed on the user's system instead of Playwright's installed Chromium.
+      // Disables browser automation detection features, preventing websites from identifying Playwright-controlled browsers
+      args: ["--disable-blink-features=AutomationControlled"], // Ref: https://stackoverflow.com/a/78790595 and https://github.com/microsoft/playwright/issues/24374#issuecomment-1648279814
+      // This makes the browser opens in full screen mode, taking the dimension of the screen itself and the pages opened in the browser takes full viewport (of browser).
+      viewport: null, // Ref: https://stackoverflow.com/a/75978207
+    });
+
+    // When the browser launches, it automatically opens a default blank page.
+    const page = context.pages()[0];
+
+    try {
+      //When the browser launches, it automatically opens a default blank page (about:blank), so we redirect the user to maxroom.co for a better experience.
+      await page.goto("https://maxroom.co/");
+    } catch (error) {
+      console.log(error);
+      await context.close({ reason: "Error while opening browser." });
+    }
+  });
+
   window.on("closed", () => {
     // Remove event listeners
     window.removeAllListeners();
@@ -137,6 +161,7 @@ async function setUpElectronApp(): Promise<void> {
     ipcMain.removeAllListeners(); // To handle errors like: Error: Attempted to register a second handler for 'get-folder-path' in macOS
     ipcMain.removeHandler(IPCEvents.Upload);
     ipcMain.removeHandler(IPCEvents.SelectMedia);
+    ipcMain.removeHandler(IPCEvents.OpenBrowser);
   });
 }
 

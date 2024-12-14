@@ -491,12 +491,14 @@ async function uploadToThreads(context: BrowserContext, videos: VideoDetails[], 
     for (const video of videos) {
       // locate and click the Post button to make the upload modal open
       const createButton = page.getByRole("button", { name: "Post", exact: true });
-      await createButton.waitFor({ state: "visible", timeout: 0 });
-      await createButton.click();
+      await createButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
 
       // locate the file input element and append video to it
       const fileInput = page.locator('input[type="file"]');
       await fileInput.setInputFiles(video.video);
+
+      // A Button with text "Alt" appears on top of video when the video is attached completely. This ensure the video is completely upload before posting.
+      await page.getByRole("button", { name: "Alt" }).waitFor({ state: "visible", timeout: 0 });
 
       // Adding Values like title, description.
       const { title, description, url } = video;
@@ -506,8 +508,7 @@ async function uploadToThreads(context: BrowserContext, videos: VideoDetails[], 
 
       // Get the "Post" button and click to post the video.
       const postButton = page.getByRole("button", { name: "Post", exact: true });
-      await postButton.waitFor({ state: "visible", timeout: 0 });
-      await postButton.click();
+      await postButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
       // Waiting for "Role: Alert" to get attached to the DOM.
       await page.getByRole("alert").waitFor({ state: "attached" });
       // Waiting for "Role: Alert" to get Detached from the DOM. This ensures that the video posting is complete.

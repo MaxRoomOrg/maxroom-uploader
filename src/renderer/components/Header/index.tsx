@@ -1,7 +1,6 @@
-import { AppShell, ActionIcon, Group, NavLink as MantineNavLink, Title } from "@mantine/core";
+import { AppShell, ActionIcon, Group, Title, Button } from "@mantine/core";
 import { IconMoonStars, IconSun } from "@tabler/icons-react";
 import React from "react";
-import { NavLink, useLocation } from "react-router";
 import type { MantineColorScheme } from "@mantine/core";
 
 export interface HeaderProps {
@@ -9,32 +8,24 @@ export interface HeaderProps {
   onToggleColorScheme: () => void;
 }
 
-const NavLinks: { path: string; label: string }[] = [
-  {
-    path: "/",
-    label: "Home",
-  },
-];
+const handleOpen = () => {
+  window.electronAPI
+    ?.openBrowser()
+    .then(() => {
+      console.log("Browser opened successfully");
+    })
+    .catch((error: unknown) => {
+      console.error("Error opening browser:", error);
+    });
+};
 
 export function Header({ colorScheme, onToggleColorScheme }: HeaderProps): React.JSX.Element {
-  const location = useLocation();
-
   return (
     <AppShell.Header p="xs">
       <Group justify="space-between" align="center">
         <Title order={5}>MaxRoom Uploader</Title>
         <Group wrap="nowrap">
-          {NavLinks.map(({ path, label }) => {
-            return (
-              <MantineNavLink
-                key={path}
-                component={NavLink}
-                active={location.pathname === path}
-                to={path}
-                label={label}
-              />
-            );
-          })}
+          <Button onClick={handleOpen}>Open Browser</Button>
         </Group>
         <ActionIcon onClick={onToggleColorScheme} variant="default">
           {colorScheme === "dark" ? <IconSun /> : <IconMoonStars />}
