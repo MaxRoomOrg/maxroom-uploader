@@ -3,11 +3,33 @@ import { PlatformHandlers } from "./utils";
 import { IPCEvents } from "../ipc-api";
 import { MediaType } from "../utils";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import fetch from "node-fetch";
 import { chromium } from "playwright-chromium";
+import { writeFile } from "fs/promises";
 import { join, resolve } from "path";
 import type { VideoDetails } from "../schemas";
 import type { Platform } from "../utils";
 import type { FileFilter, OpenDialogReturnValue } from "electron";
+import type { Response } from "node-fetch";
+
+export async function downloadMedia(video: VideoDetails, mediaType: MediaType) {
+  let response: Response;
+  if (mediaType === MediaType.Image && typeof video.image === "string") {
+    response = await fetch(video.image);
+  } else {
+    response = await fetch(video.video);
+  }
+  // Convert the response to an ArrayBuffer
+  const arrayBuffer = await response.arrayBuffer();
+
+  // The ArrayBuffer (binary data) is converted into a Node.js Buffer.
+  // This is necessary because Node.js uses Buffer objects to work with binary data.
+  const buffer = Buffer.from(arrayBuffer);
+  const downloadPath = join(app.getPath("downloads"), `${mediaType}${video.maxroomID ?? ""}`);
+  // Write the Buffer (binary data) to the specified path
+  await writeFile(downloadPath, buffer);
+  return downloadPath;
+}
 
 // Ref: https://www.electronjs.org/docs/latest/tutorial/launch-app-from-url-in-another-app
 function setupProtocol(): void {
@@ -87,6 +109,12 @@ async function setUpElectronApp(): Promise<void> {
   });
 
   ipcMain.handle(IPCEvents.Upload, async (_event, platforms: Platform[], video: VideoDetails) => {
+    // Download the video and image, if maxroom video if is provided
+    if (typeof video.maxroomID === "string" && video.maxroomID.length > 0) {
+      const paths = await Promise.all([downloadMedia(video, MediaType.Video), downloadMedia(video, MediaType.Image)]);
+      video.video = paths[0];
+      video.image = paths[1];
+    }
     // Ref: https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context
     const userDataDir = join(app.getPath("userData"), "playwright"); // Directory where session data will be stored
     const context = await chromium.launchPersistentContext(userDataDir, {

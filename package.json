@@ -1,6 +1,6 @@
 {
   "name": "maxroom-uploader",
-  "version": "1.0.9",
+  "version": "1.0.8",
   "private": true,
   "description": "An Electron bot that uploads videos to X, FB, YT and TikTok",
   "repository": "https://github.com/manufac-analytics/social.git",
@@ -36,6 +36,7 @@
     "@mantine/form": "^7.14.3",
     "@mantine/hooks": "^7.14.2",
     "@tabler/icons-react": "^3.22.0",
+    "node-fetch": "^3.3.2",
     "playwright-chromium": "^1.49.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

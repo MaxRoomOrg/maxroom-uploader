@@ -2,9 +2,10 @@ import {
   VideoDetailsFormPlaceholders,
   VideoDetailsFormLabels,
   VideoDetailsFormNames,
+  getVideoDetails,
 } from "./utils";
 import { VideoDetailsSchema } from "../../../schemas";
-import { MediaType, Platform } from "../../../utils";
+import { MediaType, OGTag, Platform } from "../../../utils";
 import { Button, MultiSelect, Stack, TextInput } from "@mantine/core";
 import { useForm, zodResolver } from "@mantine/form";
 import { useState } from "react";
@@ -23,13 +24,14 @@ const handleUpload = (platforms: Platform[], video: VideoDetails) => {
 };
 
 export function VideoPublishForm(): JSX.Element {
-  const { getInputProps, key, values, setFieldValue } = useForm<VideoDetails>({
+  const { getInputProps, key, values, setFieldValue, setValues } = useForm<VideoDetails>({
     initialValues: {
       title: "",
       description: "",
       image: "",
       video: "",
       url: "",
+      maxroomID: "",
     },
     validate: zodResolver(VideoDetailsSchema),
     validateInputOnBlur: true,
@@ -54,6 +56,24 @@ export function VideoPublishForm(): JSX.Element {
       .catch((error: unknown) => {
         console.log(error);
       });
+  };
+
+  const handleGetDetails = () => {
+    if (typeof values.maxroomID === "string" && values.maxroomID.length > 0) {
+      getVideoDetails(values.maxroomID)
+        .then((results) => {
+          setValues({
+            title: results[OGTag.Title],
+            description: results[OGTag.Description],
+            url: results[OGTag.URL],
+            video: results[OGTag.Video],
+            image: results[OGTag.Image],
+          });
+        })
+        .catch((error: unknown) => {
+          console.log(error);
+        });
+    }
   };
 
   return (
@@ -96,8 +116,16 @@ export function VideoPublishForm(): JSX.Element {
             label={VideoDetailsFormLabels.url}
             placeholder={VideoDetailsFormPlaceholders.url}
           />
+          <TextInput
+            {...getInputProps(VideoDetailsFormNames.maxroomID)}
+            key={key(VideoDetailsFormNames.maxroomID)}
+            label={VideoDetailsFormLabels.maxroomID}
+            placeholder={VideoDetailsFormPlaceholders.maxroomID}
+          />
         </Stack>
       </form>
+      <Button onClick={handleGetDetails}>Get details from Maxroom</Button>
+
       <MultiSelect
         data={Object.entries(Platform).map(([label, value]) => {
           return {

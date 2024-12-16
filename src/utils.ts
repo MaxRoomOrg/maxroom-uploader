@@ -16,3 +16,12 @@ export const MediaType = {
   Video: "video",
 } as const;
 export type MediaType = (typeof MediaType)[keyof typeof MediaType];
+
+export const OGTag = {
+  Title: "og:title",
+  Description: "og:description",
+  URL: "og:url",
+  Image: "og:image",
+  Video: "og:video",
+} as const;
+export type OGTag = (typeof OGTag)[keyof typeof OGTag];
