@@ -111,6 +111,7 @@ async function uploadToYoutube(context: BrowserContext, videos: VideoDetails[], 
       await closeButton.click();
       await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
+    await page.close();
   } catch (error: unknown) {
     console.log(error);
   }
@@ -166,6 +167,7 @@ async function uploadToX(context: BrowserContext, videos: VideoDetails[], delayB
 
       await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
+    await page.close();
   } catch (error) {
     console.error("An error occurred while uploading videos:", error);
   }
@@ -230,6 +232,7 @@ async function uploadToInstagram(context: BrowserContext, videos: VideoDetails[]
       await exitButton.click({ timeout: 0 }); // Timeout: 0 is added to wait for the button to be visible and enabled to click.
       await sleep(delayBetweenPosts);
     }
+    await page.close();
   } catch (err) {
     console.log(`Failed to upload video:`, err);
   }
@@ -283,6 +286,7 @@ async function uploadToLinkedIn(context: BrowserContext, videos: VideoDetails[],
       await processingTextLocator.waitFor({ state: "visible", timeout: 0 });
       await sleep(delayBetweenPosts);
     }
+    await page.close();
   } catch (err) {
     console.log(err);
   }
@@ -357,6 +361,7 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[],
 
       await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
+    await page.close();
   } catch (error) {
     console.log(error);
   }
@@ -396,6 +401,7 @@ async function uploadToTiktok(context: BrowserContext, videos: VideoDetails[], d
       await page.getByRole("button", { name: "Upload" }).click();
       await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
+    await page.close();
   } catch (error: unknown) {
     console.error(error);
   }
@@ -434,6 +440,7 @@ async function uploadToFacebook(context: BrowserContext, videos: VideoDetails[],
       await page.getByText("Posting").waitFor({ state: "detached", timeout: 0 });
       await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
+    await page.close();
   } catch (error) {
     console.error(error);
   }
@@ -476,6 +483,7 @@ async function uploadToPinterest(context: BrowserContext, videos: VideoDetails[]
       await page.getByText("Your Pin has been published!").waitFor({ state: "visible", timeout: 0 });
       await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
+    await page.close();
   } catch (error: unknown) {
     console.error(error);
   }
@@ -515,6 +523,7 @@ async function uploadToThreads(context: BrowserContext, videos: VideoDetails[], 
       await page.getByRole("alert").waitFor({ state: "detached", timeout: 0 });
       await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
     }
+    await page.close();
   } catch (error: unknown) {
     console.error(error);
   }

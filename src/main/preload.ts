@@ -12,6 +12,9 @@ const electronAPI: ElectronAPI = {
   openBrowser: () => {
     return ipcRenderer.invoke(IPCEvents.OpenBrowser);
   },
+  downloadMedia: (video) => {
+    return ipcRenderer.invoke(IPCEvents.DownloadMedia, video);
+  },
 };
 
 contextBridge.exposeInMainWorld("electronAPI", electronAPI);

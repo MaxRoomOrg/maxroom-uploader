@@ -5,29 +5,32 @@ import { MediaType } from "../utils";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import fetch from "node-fetch";
 import { chromium } from "playwright-chromium";
-import { writeFile } from "fs/promises";
+import { createWriteStream } from "fs";
 import { join, resolve } from "path";
+import { pipeline } from "stream/promises";
 import type { VideoDetails } from "../schemas";
 import type { Platform } from "../utils";
 import type { FileFilter, OpenDialogReturnValue } from "electron";
-import type { Response } from "node-fetch";
 
-export async function downloadMedia(video: VideoDetails, mediaType: MediaType) {
-  let response: Response;
-  if (mediaType === MediaType.Image && typeof video.image === "string") {
-    response = await fetch(video.image);
-  } else {
-    response = await fetch(video.video);
+export async function downloadMedia(url: string, maxroomID: string) {
+  const response = await fetch(url);
+
+  let downloadPath = "";
+
+  if (response.body !== null) {
+    /* Since the downloaded file requires an extension to be recognized and supported by platforms, and
+    the file isn't downloading with its extension automatically, we extract the extension from the 
+    URL itself. This step ensures that the file is saved with a proper extension, allowing it to be
+    supported and opened correctly on any platform. */
+    const parts = response.url.split(".");
+    const fileExtension = parts[parts.length - 1];
+    downloadPath = join(app.getPath("downloads"), `${maxroomID}.${fileExtension}`);
+
+    // Create a write stream to efficiently save the downloaded file
+    const fileStream = createWriteStream(downloadPath);
+    // pipeline() streams data chunk by chunk, efficiently transferring from source to destination
+    await pipeline(response.body, fileStream);
   }
-  // Convert the response to an ArrayBuffer
-  const arrayBuffer = await response.arrayBuffer();
-
-  // The ArrayBuffer (binary data) is converted into a Node.js Buffer.
-  // This is necessary because Node.js uses Buffer objects to work with binary data.
-  const buffer = Buffer.from(arrayBuffer);
-  const downloadPath = join(app.getPath("downloads"), `${mediaType}${video.maxroomID ?? ""}`);
-  // Write the Buffer (binary data) to the specified path
-  await writeFile(downloadPath, buffer);
   return downloadPath;
 }
 
@@ -66,7 +69,6 @@ async function createWindow(): Promise<BrowserWindow> {
   }
 
   // Load index.html
-  win.maximize();
   await win.loadFile("./dist/renderer/index.html");
   return win;
 }
@@ -109,12 +111,6 @@ async function setUpElectronApp(): Promise<void> {
   });
 
   ipcMain.handle(IPCEvents.Upload, async (_event, platforms: Platform[], video: VideoDetails) => {
-    // Download the video and image, if maxroom video if is provided
-    if (typeof video.maxroomID === "string" && video.maxroomID.length > 0) {
-      const paths = await Promise.all([downloadMedia(video, MediaType.Video), downloadMedia(video, MediaType.Image)]);
-      video.video = paths[0];
-      video.image = paths[1];
-    }
     // Ref: https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context
     const userDataDir = join(app.getPath("userData"), "playwright"); // Directory where session data will be stored
     const context = await chromium.launchPersistentContext(userDataDir, {
@@ -182,6 +178,18 @@ async function setUpElectronApp(): Promise<void> {
     }
   });
 
+  ipcMain.handle(IPCEvents.DownloadMedia, async (_event, video: VideoDetails) => {
+    // Download the video and image, if maxroom video id is provided
+    let paths: string[] = [];
+    if (typeof video.video === "string" && typeof video.image === "string" && typeof video.maxroomID === "string") {
+      paths = await Promise.all([
+        downloadMedia(video.video, video.maxroomID),
+        downloadMedia(video.image, video.maxroomID),
+      ]);
+    }
+    return paths;
+  });
+
   window.on("closed", () => {
     // Remove event listeners
     window.removeAllListeners();
@@ -190,6 +198,7 @@ async function setUpElectronApp(): Promise<void> {
     ipcMain.removeHandler(IPCEvents.Upload);
     ipcMain.removeHandler(IPCEvents.SelectMedia);
     ipcMain.removeHandler(IPCEvents.OpenBrowser);
+    ipcMain.removeHandler(IPCEvents.DownloadMedia);
   });
 }
 

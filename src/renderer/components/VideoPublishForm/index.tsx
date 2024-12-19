@@ -37,7 +37,9 @@ export function VideoPublishForm(): JSX.Element {
     validateInputOnBlur: true,
     validateInputOnChange: true,
   });
-  const [platforms, setPlatforms] = useState<Platform[]>([]);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [platforms, setPlatforms] = useState<Platform[]>(Object.values(Platform));
 
   const handleSelect = (mediaType: MediaType) => {
     window.electronAPI
@@ -60,18 +62,41 @@ export function VideoPublishForm(): JSX.Element {
 
   const handleGetDetails = () => {
     if (typeof values.maxroomID === "string" && values.maxroomID.length > 0) {
+      setIsFetching(true);
+
       getVideoDetails(values.maxroomID)
         .then((results) => {
-          setValues({
+          const video: VideoDetails = {
             title: results[OGTag.Title],
             description: results[OGTag.Description],
             url: results[OGTag.URL],
             video: results[OGTag.Video],
             image: results[OGTag.Image],
-          });
+            maxroomID: values.maxroomID,
+          };
+          // Set the fetch details
+          setValues(video);
+
+          // Update loading states
+          setIsFetching(false);
+          setIsDownloading(true);
+
+          // Start the video and image downloading and update the path once they are downloaded.
+          window.electronAPI
+            ?.downloadMedia(video)
+            .then((paths) => {
+              setFieldValue(VideoDetailsFormNames.video, paths[0]);
+              setFieldValue(VideoDetailsFormNames.image, paths[1]);
+              setIsDownloading(false);
+            })
+            .catch((error: unknown) => {
+              console.log(error);
+              setIsDownloading(false);
+            });
         })
         .catch((error: unknown) => {
           console.log(error);
+          setIsFetching(false);
         });
     }
   };
@@ -124,7 +149,15 @@ export function VideoPublishForm(): JSX.Element {
           />
         </Stack>
       </form>
-      <Button onClick={handleGetDetails}>Get details from Maxroom</Button>
+      <Button
+        onClick={handleGetDetails}
+        loading={isFetching === true || isDownloading === true}
+        loaderProps={{
+          children: isFetching === true ? "Fetching Details..." : "Downloading video and image...",
+        }}
+      >
+        Get details from Maxroom
+      </Button>
 
       <MultiSelect
         data={Object.entries(Platform).map(([label, value]) => {
@@ -141,6 +174,7 @@ export function VideoPublishForm(): JSX.Element {
         }}
       />
       <Button
+        loading={isFetching === true || isDownloading === true}
         onClick={() => {
           handleUpload(platforms, values);
         }}
