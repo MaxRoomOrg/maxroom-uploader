@@ -49,6 +49,7 @@ async function createWindow(): Promise<BrowserWindow> {
   const win = new BrowserWindow({
     title: "MaxRoom Uploader", // Ref: https://github.com/electron/electron/blob/main/docs/api/structures/browser-window-options.md?inline
     width: 400,
+    height: 850,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
     },

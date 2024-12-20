@@ -29,6 +29,10 @@ function sleep(ms: number) {
   });
 }
 
+function trimText(str: string, maxLength: number) {
+  return str.length > maxLength ? str.slice(0, maxLength) : str;
+}
+
 async function uploadToYoutube(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
 
@@ -69,7 +73,8 @@ async function uploadToYoutube(context: BrowserContext, videos: VideoDetails[], 
 
       const youtubeDescription = typeof description === "string" ? `${description} ${url ?? ""}` : url;
       if (typeof youtubeDescription === "string") {
-        await descriptionLocator.fill(youtubeDescription);
+        const text = trimText(youtubeDescription, 5000); // Youtube description has limit the description lenght to 5000 characters.
+        await descriptionLocator.fill(text);
       }
 
       // Check if thumbnail option is available or not, as it depends on video lenght we are uploading
@@ -139,7 +144,8 @@ async function uploadToX(context: BrowserContext, videos: VideoDetails[], delayB
       const { title, description, url } = video;
       const content = page.getByLabel("Post text", { exact: true });
       const text = `${title}\n${description ?? ""}`.trim();
-      await content.fill(text);
+      const postText = trimText(text, 280); // X has limit the post lenght to 280 character.
+      await content.fill(postText);
 
       // Wait for the 'Post' button to appear and click it.
       const publishButton = page.getByTestId("tweetButtonInline");
@@ -345,7 +351,8 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[],
       const { title, description, url } = video;
       const content = page.getByPlaceholder("Add a description and #topics", { exact: true });
       const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim();
-      await content.fill(text);
+      const postText = trimText(text, 160); // Snapchat has limit the post lenght to 160 character.
+      await content.fill(postText);
 
       // Wait infinitely for the button to become clickable because sometimes a captcha appears, and we need to wait until it is solved
       const postButton = page.getByRole("button", { name: "Post to Snapchat", exact: true });
@@ -389,7 +396,8 @@ async function uploadToTiktok(context: BrowserContext, videos: VideoDetails[], d
       const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim(); // using trim() helps to remove empty lines if either of the values are missing
       await editor.click(); // To write into contentediable "div" we first have to focus on it by clicking it.
       await editor.clear(); // Tiktok itself puts the video name in the editor, hence first clear it and then fill text.
-      await editor.fill(text);
+      const postText = trimText(text, 4000); // Tiktok description has limit the description lenght to 4000 characters.
+      await editor.fill(postText);
 
       // Using "timeout: 0" to prevent timeout error if a video of a larger size needs to be uploaded, 0 sets Timeout to infinity.
       // We use { exact: true } to ensure that the label "Uploaded" is matched exactly, without allowing partial matches.
@@ -474,9 +482,9 @@ async function uploadToPinterest(context: BrowserContext, videos: VideoDetails[]
         await page.getByRole("button", { name: "Publish" }).click(); // When we click on "Publish" button, URL verification starts, once it is end we again click "Publish" button.
       }
 
-      // Wait for the text "Changes Stored!" to appear and then click on the publish button.
+      // As soon as the text "Saving..." comes click "Publish" button and don't wait for saving.
       // Using "timeout: 0" to prevent timeout error if a video of a larger size needs to be uploaded, 0 sets Timeout to infinity.
-      await page.getByText("Changes stored!", { exact: true }).waitFor({ state: "visible", timeout: 0 });
+      await page.getByText("Saving...", { exact: true }).waitFor({ state: "visible", timeout: 0 });
       // We don't need state: "visible" here because in pinterest , the publish button is visible from the very beginning.
       await page.getByRole("button", { name: "Publish" }).click();
       // wait for completion of publish before moving to upload next video or close the browser otherwise it will save as draft.
