@@ -52,7 +52,7 @@ async function uploadToYoutube(context: BrowserContext, videos: VideoDetails[], 
       await fileInputElement.setInputFiles(video.video);
 
       // Find the "Next" button on the plublish dialog which opens when video is uploaded
-      const nextButton = page.getByLabel("Next");
+      const nextButton = page.getByRole("dialog").getByLabel("Next");
 
       // Adding Values like title, description, thumbnail, url.
       const { title, description, image, url } = video;
@@ -143,7 +143,7 @@ async function uploadToX(context: BrowserContext, videos: VideoDetails[], delayB
       // Adding Values like title, description.
       const { title, description, url } = video;
       const content = page.getByLabel("Post text", { exact: true });
-      const text = `${title}\n${description ?? ""}`.trim();
+      const text = `${title}\n${description}`.trim();
       const postText = trimText(text, 280); // X has limit the post lenght to 280 character.
       await content.fill(postText);
 
@@ -224,7 +224,7 @@ async function uploadToInstagram(context: BrowserContext, videos: VideoDetails[]
       // Adding Values like title, description, url.
       const { title, description, url } = video;
       const content = page.getByLabel("Write a caption...", { exact: true });
-      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim();
+      const text = `${title}\n${description}\n${url ?? ""}`.trim();
       await content.fill(text);
 
       // Wait for the "Share" button to appear and click it
@@ -280,7 +280,7 @@ async function uploadToLinkedIn(context: BrowserContext, videos: VideoDetails[],
       // Adding Values like title, description, url.
       const { title, description, url } = video;
       const editor = page.getByRole("textbox", { name: "Text editor for creating" });
-      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim(); // using trim() helps to remove empty lines if either of the values are missing
+      const text = `${title}\n${description}\n${url ?? ""}`.trim(); // using trim() helps to remove empty lines if either of the values are missing
       await editor.fill(text);
 
       // Wait for the "Post" button to appear and be visible on the page, finalizes and publishes the post with the uploaded video.
@@ -350,7 +350,7 @@ async function uploadToSnapchat(context: BrowserContext, videos: VideoDetails[],
       // Adding Values like title, description, url.
       const { title, description, url } = video;
       const content = page.getByPlaceholder("Add a description and #topics", { exact: true });
-      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim();
+      const text = `${title}\n${description}\n${url ?? ""}`.trim();
       const postText = trimText(text, 160); // Snapchat has limit the post lenght to 160 character.
       await content.fill(postText);
 
@@ -393,7 +393,7 @@ async function uploadToTiktok(context: BrowserContext, videos: VideoDetails[], d
       const editor = page.locator('div[role="combobox"][contenteditable="true"]');
 
       // fill values
-      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim(); // using trim() helps to remove empty lines if either of the values are missing
+      const text = `${title}\n${description}\n${url ?? ""}`.trim(); // using trim() helps to remove empty lines if either of the values are missing
       await editor.click(); // To write into contentediable "div" we first have to focus on it by clicking it.
       await editor.clear(); // Tiktok itself puts the video name in the editor, hence first clear it and then fill text.
       const postText = trimText(text, 4000); // Tiktok description has limit the description lenght to 4000 characters.
@@ -437,7 +437,7 @@ async function uploadToFacebook(context: BrowserContext, videos: VideoDetails[],
       // Adding Values like title, description, url.
       const { title, description, url } = video;
       const content = page.getByLabel("What's on your mind", { exact: false }); // exact: false is used for partial match as the Label can vary user-to-user (e.g. What's on your mind, {Username})
-      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim();
+      const text = `${title}\n${description}\n${url ?? ""}`.trim();
       await content.fill(text);
 
       // Find and click the "Post" button.
@@ -476,7 +476,7 @@ async function uploadToPinterest(context: BrowserContext, videos: VideoDetails[]
       await titleLocator.fill(title);
       // The description box is a div with contenteditable true, so first click on it to focus, and then insert the description
       await descriptionLocator.click();
-      await page.keyboard.insertText(description ?? "");
+      await page.keyboard.insertText(description);
       if (typeof url === "string") {
         await linkLocator.fill(url);
         await page.getByRole("button", { name: "Publish" }).click(); // When we click on "Publish" button, URL verification starts, once it is end we again click "Publish" button.
@@ -519,7 +519,7 @@ async function uploadToThreads(context: BrowserContext, videos: VideoDetails[], 
       // Adding Values like title, description.
       const { title, description, url } = video;
       const editor = page.getByRole("textbox");
-      const text = `${title}\n${description ?? ""}\n${url ?? ""}`.trim();
+      const text = `${title}\n${description}\n${url ?? ""}`.trim();
       await editor.fill(text);
 
       // Get the "Post" button and click to post the video.

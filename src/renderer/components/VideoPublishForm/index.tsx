@@ -24,14 +24,18 @@ const handleUpload = (platforms: Platform[], video: VideoDetails) => {
 };
 
 export function VideoPublishForm(): JSX.Element {
-  const { getInputProps, key, values, setFieldValue, setValues } = useForm<VideoDetails>({
+  const {
+    getInputProps,
+    key,
+    values,
+    setFieldValue,
+    setValues,
+    onSubmit: onFormSubmit,
+  } = useForm<VideoDetails>({
     initialValues: {
       title: "",
       description: "",
-      image: "",
       video: "",
-      url: "",
-      maxroomID: "",
     },
     validate: zodResolver(VideoDetailsSchema),
     validateInputOnBlur: true,
@@ -102,85 +106,83 @@ export function VideoPublishForm(): JSX.Element {
   };
 
   return (
-    <Stack>
-      <form>
-        <Stack>
-          <TextInput
-            {...getInputProps(VideoDetailsFormNames.title)}
-            key={key(VideoDetailsFormNames.title)}
-            label={VideoDetailsFormLabels.title}
-            placeholder={VideoDetailsFormPlaceholders.title}
-          />
-          <TextInput
-            {...getInputProps(VideoDetailsFormNames.description)}
-            key={key(VideoDetailsFormNames.description)}
-            label={VideoDetailsFormLabels.description}
-            placeholder={VideoDetailsFormPlaceholders.description}
-          />
-          <TextInput
-            {...getInputProps(VideoDetailsFormNames.image)}
-            key={key(VideoDetailsFormNames.image)}
-            label={VideoDetailsFormLabels.image}
-            placeholder={VideoDetailsFormPlaceholders.image}
-            onClick={() => {
-              handleSelect(MediaType.Image);
-            }}
-          />
-          <TextInput
-            {...getInputProps(VideoDetailsFormNames.video)}
-            key={key(VideoDetailsFormNames.video)}
-            label={VideoDetailsFormLabels.video}
-            placeholder={VideoDetailsFormPlaceholders.video}
-            onClick={() => {
-              handleSelect(MediaType.Video);
-            }}
-          />
-          <TextInput
-            {...getInputProps(VideoDetailsFormNames.url)}
-            key={key(VideoDetailsFormNames.url)}
-            label={VideoDetailsFormLabels.url}
-            placeholder={VideoDetailsFormPlaceholders.url}
-          />
-          <TextInput
-            {...getInputProps(VideoDetailsFormNames.maxroomID)}
-            key={key(VideoDetailsFormNames.maxroomID)}
-            label={VideoDetailsFormLabels.maxroomID}
-            placeholder={VideoDetailsFormPlaceholders.maxroomID}
-          />
-        </Stack>
-      </form>
-      <Button
-        onClick={handleGetDetails}
-        loading={isFetching === true || isDownloading === true}
-        loaderProps={{
-          children: isFetching === true ? "Fetching Details..." : "Downloading video and image...",
-        }}
-      >
-        Get details from Maxroom
-      </Button>
+    <form
+      onSubmit={onFormSubmit((data) => {
+        handleUpload(platforms, data);
+      })}
+    >
+      <Stack>
+        <TextInput
+          {...getInputProps(VideoDetailsFormNames.title)}
+          key={key(VideoDetailsFormNames.title)}
+          label={VideoDetailsFormLabels.title}
+          placeholder={VideoDetailsFormPlaceholders.title}
+        />
+        <TextInput
+          {...getInputProps(VideoDetailsFormNames.description)}
+          key={key(VideoDetailsFormNames.description)}
+          label={VideoDetailsFormLabels.description}
+          placeholder={VideoDetailsFormPlaceholders.description}
+        />
+        <TextInput
+          {...getInputProps(VideoDetailsFormNames.image)}
+          key={key(VideoDetailsFormNames.image)}
+          label={VideoDetailsFormLabels.image}
+          placeholder={VideoDetailsFormPlaceholders.image}
+          onClick={() => {
+            handleSelect(MediaType.Image);
+          }}
+        />
+        <TextInput
+          {...getInputProps(VideoDetailsFormNames.video)}
+          key={key(VideoDetailsFormNames.video)}
+          label={VideoDetailsFormLabels.video}
+          placeholder={VideoDetailsFormPlaceholders.video}
+          onClick={() => {
+            handleSelect(MediaType.Video);
+          }}
+        />
+        <TextInput
+          {...getInputProps(VideoDetailsFormNames.url)}
+          key={key(VideoDetailsFormNames.url)}
+          label={VideoDetailsFormLabels.url}
+          placeholder={VideoDetailsFormPlaceholders.url}
+        />
+        <TextInput
+          {...getInputProps(VideoDetailsFormNames.maxroomID)}
+          key={key(VideoDetailsFormNames.maxroomID)}
+          label={VideoDetailsFormLabels.maxroomID}
+          placeholder={VideoDetailsFormPlaceholders.maxroomID}
+        />
+        <Button
+          onClick={handleGetDetails}
+          loading={isFetching === true || isDownloading === true}
+          loaderProps={{
+            children:
+              isFetching === true ? "Fetching Details..." : "Downloading video and image...",
+          }}
+        >
+          Get details from Maxroom
+        </Button>
 
-      <MultiSelect
-        data={Object.entries(Platform).map(([label, value]) => {
-          return {
-            value,
-            label,
-          };
-        })}
-        label="Platforms"
-        placeholder="Choose platforms for video upload"
-        value={platforms}
-        onChange={(value) => {
-          setPlatforms(value as Platform[]);
-        }}
-      />
-      <Button
-        loading={isFetching === true || isDownloading === true}
-        onClick={() => {
-          handleUpload(platforms, values);
-        }}
-      >
-        Publish
-      </Button>
-    </Stack>
+        <MultiSelect
+          data={Object.entries(Platform).map(([label, value]) => {
+            return {
+              value,
+              label,
+            };
+          })}
+          label="Platforms"
+          placeholder="Choose platforms for video upload"
+          value={platforms}
+          onChange={(value) => {
+            setPlatforms(value as Platform[]);
+          }}
+        />
+        <Button loading={isFetching === true || isDownloading === true} type="submit">
+          Publish
+        </Button>
+      </Stack>
+    </form>
   );
 }
