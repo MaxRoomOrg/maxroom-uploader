@@ -12,6 +12,8 @@ import type { VideoDetails } from "../schemas";
 import type { Platform } from "../utils";
 import type { FileFilter, OpenDialogReturnValue } from "electron";
 
+let deeplinkingURL: string;
+
 export async function downloadMedia(url: string, maxroomID: string) {
   const response = await fetch(url);
 
@@ -60,7 +62,18 @@ async function createWindow(): Promise<BrowserWindow> {
   if (gotTheLock === false) {
     app.quit();
   } else {
-    app.on("second-instance", () => {
+    // Ref: https://github.com/oikonomopo/electron-deep-linking-mac-win/blob/master/main.js
+    app.on("second-instance", (_e, argv) => {
+      // Protocol handler for win32
+      // argv: An array of the second instance’s (command line / deep linked) arguments
+      // This code handles situations where a user attempts to open a second instance of the app with a deep-link URL.
+      // This ensures the deep-link URL is processed correctly without starting a new instance of the app.
+      if (process.platform === "win32") {
+        // Keep only command line / deep linked arguments
+        const deepLinkPaths = argv.slice(1);
+        deeplinkingURL = deepLinkPaths[deepLinkPaths.length - 1];
+        win.webContents.send(IPCEvents.OnMessage, deeplinkingURL);
+      }
       // Someone tried to run a second instance, we should focus our window.
       if (win.isMinimized() === true) {
         win.restore();
@@ -71,6 +84,14 @@ async function createWindow(): Promise<BrowserWindow> {
 
   // Load index.html
   await win.loadFile("./dist/renderer/index.html");
+
+  if (process.platform === "win32") {
+    // Keep only command line / deep linked arguments
+    const paths = process.argv.slice(1);
+    deeplinkingURL = paths[paths.length - 1];
+    win.webContents.send(IPCEvents.OnMessage, deeplinkingURL);
+  }
+
   return win;
 }
 

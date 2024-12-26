@@ -7,6 +7,7 @@ export const IPCEvents = {
   SelectMedia: "select-media",
   OpenBrowser: "open-browser",
   DownloadMedia: "download-media",
+  OnMessage: "on-message",
 } as const;
 
 export interface ElectronAPI {
@@ -14,6 +15,7 @@ export interface ElectronAPI {
   selectMedia: (mediaType: MediaType) => Promise<OpenDialogReturnValue>;
   openBrowser: () => Promise<void>;
   downloadMedia: (video: VideoDetails) => Promise<string[]>;
+  onMessage: (callback: (event: unknown, message: string) => void) => void;
 }
 
 declare global {

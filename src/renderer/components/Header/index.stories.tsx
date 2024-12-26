@@ -1,6 +1,5 @@
 import { Header } from ".";
 import { AppShell } from "@mantine/core";
-import { useDarkMode } from "storybook-dark-mode";
 import type { Meta, StoryObj } from "@storybook/react";
 
 export default {
@@ -10,15 +9,9 @@ export default {
 
 export const Template: StoryObj<typeof Header> = {
   render: function Wrapper() {
-    const darkMode = useDarkMode();
     return (
       <AppShell>
-        <Header
-          onToggleColorScheme={() => {
-            console.log(darkMode);
-          }}
-          colorScheme={darkMode === true ? "dark" : "light"}
-        />
+        <Header />
       </AppShell>
     );
   },

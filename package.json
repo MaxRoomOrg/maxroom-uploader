@@ -1,8 +1,8 @@
 {
   "name": "maxroom-uploader",
-  "version": "1.0.13",
+  "version": "1.0.15",
   "private": true,
-  "description": "An Electron bot that uploads videos to X, FB, YT and TikTok",
+  "description": "Maxroom Uploader",
   "repository": "https://github.com/manufac-analytics/social.git",
   "license": "UNLICENSED",
   "main": "dist/main/bundle.js",
@@ -90,5 +90,8 @@
   },
   "engines": {
     "node": ">=20.11.0"
+  },
+  "@comments": {
+    "description": "Maxroom Uploader (Application name used here instead of a descriptive text, as it is displayed in the dialog box when the browser opens the app via deep link support. This helps the user recognize the app in the browser prompt, which is the intended behavior for deep linking)."
   }
 }

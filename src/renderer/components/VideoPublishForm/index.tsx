@@ -8,7 +8,7 @@ import { VideoDetailsSchema } from "../../../schemas";
 import { MediaType, OGTag, Platform } from "../../../utils";
 import { Button, MultiSelect, Stack, TextInput } from "@mantine/core";
 import { useForm, zodResolver } from "@mantine/form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { VideoDetails } from "../../../schemas";
 import type { JSX } from "react";
 
@@ -104,6 +104,18 @@ export function VideoPublishForm(): JSX.Element {
         });
     }
   };
+
+  useEffect(() => {
+    window.electronAPI?.onMessage((_event, message) => {
+      if (typeof message === "string") {
+        const deepLinkParts = message.split("//");
+        if (deepLinkParts.length > 1) {
+          const id = deepLinkParts[deepLinkParts.length - 1].replace(/\/$/, ""); // Remove trailing "/" from the last element if it exists
+          setFieldValue(VideoDetailsFormNames.maxroomID, id);
+        }
+      }
+    });
+  }, [setFieldValue]);
 
   return (
     <form
