@@ -253,7 +253,7 @@ async function uploadToLinkedIn(context: BrowserContext, videos: VideoDetails[],
     await closeBlankPage(context);
 
     for (const video of videos) {
-      const videoButton = page.getByLabel("Add a video");
+      const videoButton = page.getByLabel("Add media");
 
       // Set the listener before clicking the button to avoid race condition where the listener could miss the event if it was set after the click.
       page.on("filechooser", async (fileChooser) => {
@@ -399,12 +399,9 @@ async function uploadToTiktok(context: BrowserContext, videos: VideoDetails[], d
       const postText = trimText(text, 4000); // Tiktok description has limit the description lenght to 4000 characters.
       await editor.fill(postText);
 
-      // Using "timeout: 0" to prevent timeout error if a video of a larger size needs to be uploaded, 0 sets Timeout to infinity.
-      // We use { exact: true } to ensure that the label "Uploaded" is matched exactly, without allowing partial matches.
-      await page.getByAltText("Uploaded", { exact: true }).waitFor({ state: "visible", timeout: 0 });
       // Ref: https://playwright.dev/docs/api/class-framelocator#frame-locator-get-by-role
-      // Click on button with name "Post"
-      await page.getByRole("button", { name: "Post" }).click();
+      // {Timeout: 0 } is used as we wait for the "Post" button to become enabled until the video gets uploaded and then click on it.
+      await page.getByRole("button", { name: "Post", exact: true }).click({ timeout: 0 });
       // Click on button with name "Upload" to upload the Post
       await page.getByRole("button", { name: "Upload" }).click();
       await sleep(delayBetweenPosts); // Adding a delay to avoid being flagged for spamming or overwhelming the platform with rapid uploads.
