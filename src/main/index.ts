@@ -126,6 +126,14 @@ async function setUpElectronApp(): Promise<void> {
     }
   });
 
+  // Ref: https://stackoverflow.com/a/44070359
+  // Deep link protocol handler for mac-os
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    deeplinkingURL = url;
+    window.webContents.send(IPCEvents.OnMessage, deeplinkingURL);
+  });
+
   // Graceful shutdown | Won't run in Windows OS
   process.once("SIGUSR2", () => {
     closeApp();

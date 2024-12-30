@@ -42,7 +42,7 @@ async function uploadToYoutube(context: BrowserContext, videos: VideoDetails[], 
     await closeBlankPage(context);
     for (const video of videos) {
       const createButton = page.getByLabel("Create", { exact: true }); // We use { exact: true } to ensure that the label "Create" is matched exactly, without allowing partial matches.
-      await createButton.click();
+      await createButton.click({ timeout: 0 });
 
       // Once the "Create" button is clicked, finding the "Upload Video" button for click
       await page.getByText("Upload video").click();
@@ -384,7 +384,7 @@ async function uploadToTiktok(context: BrowserContext, videos: VideoDetails[], d
     // Wait for the user to sign in and locate the file input element and append video to it
     for (const video of videos) {
       const fileInputElement = page.locator('input[type="file"]');
-      await fileInputElement.setInputFiles(video.video);
+      await fileInputElement.setInputFiles(video.video, { timeout: 0 });
 
       // Adding Values like title, description, url.
       const { title, description, url } = video;
@@ -454,9 +454,12 @@ async function uploadToFacebook(context: BrowserContext, videos: VideoDetails[],
 async function uploadToPinterest(context: BrowserContext, videos: VideoDetails[], delayBetweenPosts = 5000) {
   const page = await context.newPage();
   try {
-    // Wait for the user to sign in and navigate to the create Tab
-    await page.goto("https://www.pinterest.com/pin-creation-tool/");
+    // Wait for the user to sign in and then navigate to the create page.
+    await page.goto("https://www.pinterest.com/");
     await closeBlankPage(context);
+    const createButton = page.getByRole("link", { name: "Create" });
+    await createButton.click({ timeout: 0 });
+
     for (const video of videos) {
       // Locate the file input element and append video to it
       const fileInputElement = page.locator('input[type="file"]');

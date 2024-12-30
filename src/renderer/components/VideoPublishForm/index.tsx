@@ -8,7 +8,7 @@ import { VideoDetailsSchema } from "../../../schemas";
 import { MediaType, OGTag, Platform } from "../../../utils";
 import { Button, MultiSelect, Stack, TextInput } from "@mantine/core";
 import { useForm, zodResolver } from "@mantine/form";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { VideoDetails } from "../../../schemas";
 import type { JSX } from "react";
 
@@ -64,46 +64,49 @@ export function VideoPublishForm(): JSX.Element {
       });
   };
 
-  const handleGetDetails = () => {
-    if (typeof values.maxroomID === "string" && values.maxroomID.length > 0) {
-      setIsFetching(true);
+  const handleGetDetails = useCallback(
+    (maxroomID: string) => {
+      if (maxroomID.length > 0) {
+        setIsFetching(true);
 
-      getVideoDetails(values.maxroomID)
-        .then((results) => {
-          const video: VideoDetails = {
-            title: results[OGTag.Title],
-            description: results[OGTag.Description],
-            url: results[OGTag.URL],
-            video: results[OGTag.Video],
-            image: results[OGTag.Image],
-            maxroomID: values.maxroomID,
-          };
-          // Set the fetch details
-          setValues(video);
+        getVideoDetails(maxroomID)
+          .then((results) => {
+            const video: VideoDetails = {
+              title: results[OGTag.Title],
+              description: results[OGTag.Description],
+              url: results[OGTag.URL],
+              video: results[OGTag.Video],
+              image: results[OGTag.Image],
+              maxroomID: maxroomID,
+            };
+            // Set the fetch details
+            setValues(video);
 
-          // Update loading states
-          setIsFetching(false);
-          setIsDownloading(true);
+            // Update loading states
+            setIsFetching(false);
+            setIsDownloading(true);
 
-          // Start the video and image downloading and update the path once they are downloaded.
-          window.electronAPI
-            ?.downloadMedia(video)
-            .then((paths) => {
-              setFieldValue(VideoDetailsFormNames.video, paths[0]);
-              setFieldValue(VideoDetailsFormNames.image, paths[1]);
-              setIsDownloading(false);
-            })
-            .catch((error: unknown) => {
-              console.log(error);
-              setIsDownloading(false);
-            });
-        })
-        .catch((error: unknown) => {
-          console.log(error);
-          setIsFetching(false);
-        });
-    }
-  };
+            // Start the video and image downloading and update the path once they are downloaded.
+            window.electronAPI
+              ?.downloadMedia(video)
+              .then((paths) => {
+                setFieldValue(VideoDetailsFormNames.video, paths[0]);
+                setFieldValue(VideoDetailsFormNames.image, paths[1]);
+                setIsDownloading(false);
+              })
+              .catch((error: unknown) => {
+                console.log(error);
+                setIsDownloading(false);
+              });
+          })
+          .catch((error: unknown) => {
+            console.log(error);
+            setIsFetching(false);
+          });
+      }
+    },
+    [setValues, setIsFetching, setIsDownloading, setFieldValue],
+  );
 
   useEffect(() => {
     window.electronAPI?.onMessage((_event, message) => {
@@ -112,10 +115,11 @@ export function VideoPublishForm(): JSX.Element {
         if (deepLinkParts.length > 1) {
           const id = deepLinkParts[deepLinkParts.length - 1].replace(/\/$/, ""); // Remove trailing "/" from the last element if it exists
           setFieldValue(VideoDetailsFormNames.maxroomID, id);
+          handleGetDetails(id);
         }
       }
     });
-  }, [setFieldValue]);
+  }, [setFieldValue, handleGetDetails]);
 
   return (
     <form
@@ -167,7 +171,11 @@ export function VideoPublishForm(): JSX.Element {
           placeholder={VideoDetailsFormPlaceholders.maxroomID}
         />
         <Button
-          onClick={handleGetDetails}
+          onClick={() => {
+            if (typeof values.maxroomID === "string") {
+              handleGetDetails(values.maxroomID);
+            }
+          }}
           loading={isFetching === true || isDownloading === true}
           loaderProps={{
             children:
