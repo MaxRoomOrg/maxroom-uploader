@@ -154,7 +154,7 @@ async function uploadToX(context: BrowserContext, videos: VideoDetails[], delayB
       if (typeof url === "string" && url.length > 0) {
         // Use a robust method to add the URL as the first comment to the newly created post.
         // Locate the post using the same text that was just posted and click on it, this will navigate us to newly created post.
-        const createdPost = page.getByText(text, { exact: true });
+        const createdPost = page.getByText(postText, { exact: true });
         await createdPost.click({ timeout: 0 }); // Timeout: 0 is added to wait for the newly created post to be visible and then click it.
 
         // Wait for the content to load to ensure the DOM is fully ready before interacting with elements.
