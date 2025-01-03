@@ -130,6 +130,30 @@ export function VideoPublishForm(): JSX.Element {
       })}
     >
       <Stack>
+      {isVisible === true ? (
+          <>
+            <TextInput
+              {...getInputProps(VideoDetailsFormNames.maxroomID)}
+              key={key(VideoDetailsFormNames.maxroomID)}
+              label={VideoDetailsFormLabels.maxroomID}
+              placeholder={VideoDetailsFormPlaceholders.maxroomID}
+            />
+            <Button
+              onClick={() => {
+                if (typeof values.maxroomID === "string") {
+                  handleGetDetails(values.maxroomID);
+                }
+              }}
+              loading={isFetching === true || isDownloading === true}
+              loaderProps={{
+                children:
+                  isFetching === true ? "Fetching Details..." : "Downloading video and image...",
+              }}
+            >
+              Get details from Maxroom
+            </Button>
+          </>
+        ) : null}
         <TextInput
           {...getInputProps(VideoDetailsFormNames.title)}
           key={key(VideoDetailsFormNames.title)}
@@ -166,30 +190,6 @@ export function VideoPublishForm(): JSX.Element {
           label={VideoDetailsFormLabels.url}
           placeholder={VideoDetailsFormPlaceholders.url}
         />
-        {isVisible === true ? (
-          <>
-            <TextInput
-              {...getInputProps(VideoDetailsFormNames.maxroomID)}
-              key={key(VideoDetailsFormNames.maxroomID)}
-              label={VideoDetailsFormLabels.maxroomID}
-              placeholder={VideoDetailsFormPlaceholders.maxroomID}
-            />
-            <Button
-              onClick={() => {
-                if (typeof values.maxroomID === "string") {
-                  handleGetDetails(values.maxroomID);
-                }
-              }}
-              loading={isFetching === true || isDownloading === true}
-              loaderProps={{
-                children:
-                  isFetching === true ? "Fetching Details..." : "Downloading video and image...",
-              }}
-            >
-              Get details from Maxroom
-            </Button>
-          </>
-        ) : null}
         <MultiSelect
           data={Object.entries(Platform).map(([label, value]) => {
             return {
