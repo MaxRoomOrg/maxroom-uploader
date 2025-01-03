@@ -130,7 +130,7 @@ export function VideoPublishForm(): JSX.Element {
       })}
     >
       <Stack>
-      {isVisible === true ? (
+        {isVisible === true ? (
           <>
             <TextInput
               {...getInputProps(VideoDetailsFormNames.maxroomID)}
