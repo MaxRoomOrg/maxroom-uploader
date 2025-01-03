@@ -6,6 +6,7 @@ import {
 } from "./utils";
 import { VideoDetailsSchema } from "../../../schemas";
 import { MediaType, OGTag, Platform } from "../../../utils";
+import { useAppContext } from "../../context";
 import { Button, MultiSelect, Stack, TextInput } from "@mantine/core";
 import { useForm, zodResolver } from "@mantine/form";
 import { useCallback, useEffect, useState } from "react";
@@ -44,6 +45,7 @@ export function VideoPublishForm(): JSX.Element {
   const [isFetching, setIsFetching] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [platforms, setPlatforms] = useState<Platform[]>(Object.values(Platform));
+  const { isVisible } = useAppContext();
 
   const handleSelect = (mediaType: MediaType) => {
     window.electronAPI
@@ -164,27 +166,30 @@ export function VideoPublishForm(): JSX.Element {
           label={VideoDetailsFormLabels.url}
           placeholder={VideoDetailsFormPlaceholders.url}
         />
-        <TextInput
-          {...getInputProps(VideoDetailsFormNames.maxroomID)}
-          key={key(VideoDetailsFormNames.maxroomID)}
-          label={VideoDetailsFormLabels.maxroomID}
-          placeholder={VideoDetailsFormPlaceholders.maxroomID}
-        />
-        <Button
-          onClick={() => {
-            if (typeof values.maxroomID === "string") {
-              handleGetDetails(values.maxroomID);
-            }
-          }}
-          loading={isFetching === true || isDownloading === true}
-          loaderProps={{
-            children:
-              isFetching === true ? "Fetching Details..." : "Downloading video and image...",
-          }}
-        >
-          Get details from Maxroom
-        </Button>
-
+        {isVisible === true ? (
+          <>
+            <TextInput
+              {...getInputProps(VideoDetailsFormNames.maxroomID)}
+              key={key(VideoDetailsFormNames.maxroomID)}
+              label={VideoDetailsFormLabels.maxroomID}
+              placeholder={VideoDetailsFormPlaceholders.maxroomID}
+            />
+            <Button
+              onClick={() => {
+                if (typeof values.maxroomID === "string") {
+                  handleGetDetails(values.maxroomID);
+                }
+              }}
+              loading={isFetching === true || isDownloading === true}
+              loaderProps={{
+                children:
+                  isFetching === true ? "Fetching Details..." : "Downloading video and image...",
+              }}
+            >
+              Get details from Maxroom
+            </Button>
+          </>
+        ) : null}
         <MultiSelect
           data={Object.entries(Platform).map(([label, value]) => {
             return {

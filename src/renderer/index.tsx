@@ -1,3 +1,4 @@
+import { AppProvider } from "./context";
 import { Router } from "./routes";
 import { MantineProvider, createTheme } from "@mantine/core";
 import { StrictMode } from "react";
@@ -17,9 +18,11 @@ const MantineTheme = createTheme({
 const root = createRoot(document.getElementById("root") as HTMLDivElement);
 root.render(
   <StrictMode>
-    {/* Ref: https://mantine.dev/theming/color-schemes/#auto-color-scheme */}
-    <MantineProvider theme={MantineTheme} defaultColorScheme="auto">
-      <RouterProvider router={Router} />
-    </MantineProvider>
+    <AppProvider>
+      {/* Ref: https://mantine.dev/theming/color-schemes/#auto-color-scheme */}
+      <MantineProvider theme={MantineTheme} defaultColorScheme="auto">
+        <RouterProvider router={Router} />
+      </MantineProvider>
+    </AppProvider>
   </StrictMode>,
 );

@@ -1,4 +1,6 @@
-import { AppShell, Group, Title, Button } from "@mantine/core";
+import { useAppContext } from "../../context";
+import { AppShell, Group, Title, Button, ActionIcon } from "@mantine/core";
+import { IconMinus, IconPlus } from "@tabler/icons-react";
 import React from "react";
 
 const handleOpen = () => {
@@ -13,6 +15,8 @@ const handleOpen = () => {
 };
 
 export function Header(): React.JSX.Element {
+  const { isVisible, toggleVisibility } = useAppContext();
+
   return (
     <AppShell.Header p="xs">
       <Group justify="space-between" align="center">
@@ -20,6 +24,9 @@ export function Header(): React.JSX.Element {
         <Group wrap="nowrap">
           <Button onClick={handleOpen}>Open Browser</Button>
         </Group>
+        <ActionIcon size="lg" onClick={toggleVisibility}>
+          {isVisible === true ? <IconMinus /> : <IconPlus />}
+        </ActionIcon>
       </Group>
     </AppShell.Header>
   );
